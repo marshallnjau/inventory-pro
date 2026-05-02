@@ -1,0 +1,145 @@
+import { Product, InventoryAlert, CategoryStats } from './types';
+
+export const MOCK_PRODUCTS: Product[] = [
+  {
+    id: '1',
+    name: 'Widget Pro X-500',
+    sku: 'WPX-500',
+    category: 'Electronics',
+    usage: 'SALE',
+    quantity: 15,
+    value: 1349.85,
+    movement: 'fast',
+    xyzClassification: 'X',
+    lastSold: '2 hours ago',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: '2',
+    name: 'Premium Headphones',
+    sku: 'PH-892',
+    category: 'Electronics',
+    usage: 'SALE',
+    quantity: 89,
+    value: 13349.11,
+    movement: 'slow',
+    xyzClassification: 'Z',
+    lastSold: '60 days ago',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: '3',
+    name: 'USB-C Cable 2m',
+    sku: 'USB-C2M',
+    category: 'Electronics',
+    usage: 'SALE',
+    quantity: 340,
+    value: 4416.60,
+    movement: 'moderate',
+    xyzClassification: 'X',
+    lastSold: '1 day ago',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: '4',
+    name: 'Organic Coffee Beans',
+    sku: 'OCB-1KG',
+    category: 'Food & Beverage',
+    usage: 'SALE',
+    quantity: 45,
+    value: 1124.55,
+    movement: 'fast',
+    xyzClassification: 'Y',
+    lastSold: '3 hours ago',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: '5',
+    name: 'Wireless Charger Pad',
+    sku: 'WCP-15W',
+    category: 'Electronics',
+    usage: 'SALE',
+    quantity: 128,
+    value: 4478.72,
+    movement: 'fast',
+    xyzClassification: 'Y',
+    lastSold: '1 hour ago',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+];
+
+export const MOCK_SUPPLIERS = [
+  { id: '1', name: 'Apple Inc.', email: 'supply@apple.com', phone: '+1 800-275-2273', address: 'One Apple Park Way, Cupertino, CA', category: 'Hardware' },
+  { id: '2', name: 'Logitech Global', email: 'sales@logitech.com', phone: '+1 510-795-8500', address: '7700 Gateway Blvd, Newark, CA', category: 'Peripherals' },
+  { id: '3', name: 'Sony Electronics', email: 'b2b@sony.com', phone: '+1 858-942-2400', address: '16535 Via Esprillo, San Diego, CA', category: 'Audio/Video' },
+  { id: '4', name: 'Dell Technologies', email: 'orders@dell.com', phone: '+1 800-456-3355', address: 'One Dell Way, Round Rock, TX', category: 'Hardware' },
+];
+
+export const MOCK_CUSTOMERS = [
+  { id: '1', name: 'Alice Johnson', email: 'alice.j@example.com', phone: '+1 555-0101', address: '123 Maple St, Seattle, WA', balance: 0 },
+  { id: '2', name: 'Bob Smith', email: 'bob.smith@example.com', phone: '+1 555-0102', address: '456 Oak Ave, Portland, OR', balance: 150 },
+  { id: '3', name: 'Charlie Davis', email: 'charlie.d@example.com', phone: '+1 555-0103', address: '789 Pine Rd, San Francisco, CA', balance: 0 },
+  { id: '4', name: 'Diana Prince', email: 'diana.p@example.com', phone: '+1 555-0104', address: '321 Cedar Ln, Austin, TX', balance: 500 },
+];
+
+export const MOCK_ALERTS: InventoryAlert[] = [
+  {
+    id: '1',
+    type: 'reorder',
+    title: 'Reorder Required',
+    description: 'Widget Pro X-500 below reorder point (15 units remaining)',
+    timestamp: '2 hours ago',
+    actionLabel: 'Create Purchase Order',
+    severity: 'high',
+  },
+  {
+    id: '2',
+    type: 'expiry',
+    title: 'Expiry Alert',
+    description: '45 units of Organic Coffee Beans expiring in 14 days',
+    timestamp: '3 hours ago',
+    actionLabel: 'Run Clearance Sale',
+    severity: 'high',
+  },
+  {
+    id: '3',
+    type: 'slow',
+    title: 'Slow Moving Stock',
+    description: 'Premium Headphones (SKU: PH-892) no sales in 60 days',
+    timestamp: '5 hours ago',
+    actionLabel: 'Apply 15% Discount',
+    severity: 'medium',
+  },
+  {
+    id: '4',
+    type: 'overstock',
+    title: 'Overstock Risk',
+    description: 'USB-C Cables inventory 3x above average demand',
+    timestamp: '6 hours ago',
+    actionLabel: 'Transfer to Store B',
+    severity: 'medium',
+  },
+];
+
+export const CATEGORY_STATS: CategoryStats[] = [
+  { id: '1', name: 'Electronics', items: 423, value: 312450, percentage: 33, color: '#10b981' },
+  { id: '2', name: 'Office Supplies', items: 156, value: 156200, percentage: 18, color: '#3b82f6' },
+  { id: '3', name: 'Food & Beverage', items: 142, value: 142800, percentage: 15, color: '#f59e0b' },
+  { id: '4', name: 'Apparel', items: 124, value: 124650, percentage: 14, color: '#ef4444' },
+  { id: '5', name: 'Home & Garden', items: 89, value: 89500, percentage: 11, color: '#8b5cf6' },
+  { id: '6', name: 'Other', items: 48, value: 48700, percentage: 9, color: '#6b7280' },
+];
+
+export const TURNOVER_DATA = [
+  { name: 'Jul', turnover: 3.8 },
+  { name: 'Aug', turnover: 4.2 },
+  { name: 'Sep', turnover: 3.5 },
+  { name: 'Oct', turnover: 4.0 },
+  { name: 'Nov', turnover: 4.5 },
+  { name: 'Dec', turnover: 5.2 },
+];
