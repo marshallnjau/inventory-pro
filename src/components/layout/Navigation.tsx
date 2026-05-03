@@ -1,10 +1,11 @@
 import React from 'react';
 import { 
-  LayoutDashboard, Package, Grid, BarChart3, Settings, Menu, X, 
+  LayoutDashboard, Package, Grid3X3, BarChart3, Settings, Menu, X, 
   ChevronDown, Bell, Search, Plus, User, Warehouse, FileText, 
-  ShoppingCart, Factory, Users, ShieldCheck, AlertCircle, HelpCircle,
+  ShoppingCart, Factory, Users, ShieldCheck, AlertCircle, CircleHelp,
   Wrench, Building, ClipboardCheck, Layers, ClipboardList, Gauge,
-  Receipt, Truck, FileX
+  Receipt, Truck, FileX, ChevronLeft, ChevronRight, RotateCcw,
+  ShoppingBag, Boxes, Contact, TrendingUp, LineChart, UserRound
 } from 'lucide-react';
 import { ViewType } from '../../types';
 import { cn } from '../../lib/utils';
@@ -16,45 +17,179 @@ interface SidebarProps {
   onViewChange: (view: ViewType) => void;
   isOpen: boolean;
   onToggle: () => void;
+  isCollapsed: boolean;
+  onToggleCollapse: () => void;
 }
 
-const navItems = [
-  { id: 'pos' as ViewType, label: 'POS', icon: ShoppingCart },
+const menuItems = [
   { id: 'dashboard' as ViewType, label: 'Dashboard', icon: LayoutDashboard },
+  { id: 'pos' as ViewType, label: 'POS', icon: ShoppingCart },
   { id: 'inventory' as ViewType, label: 'Inventory', icon: Package },
-  { id: 'categories' as ViewType, label: 'Categories', icon: Grid },
+  { id: 'categories' as ViewType, label: 'Categories', icon: Grid3X3 },
   { id: 'warehouses' as ViewType, label: 'Warehouses', icon: Warehouse },
 ];
 
-const insightsItems = [
-  { id: 'analytics' as ViewType, label: 'Analytics', icon: BarChart3 },
-  { id: 'supplier' as ViewType, label: 'Supplier Analytics', icon: Gauge },
-  { id: 'reports' as ViewType, label: 'Reports', icon: FileText },
-  { id: 'warranties' as ViewType, label: 'Warranties', icon: ShieldCheck },
-  { id: 'alerts' as ViewType, label: 'Alerts', icon: Bell, badge: '!' },
+const menuGroups = [
+  {
+    id: 'sales',
+    label: 'Sales',
+    icon: Receipt,
+    children: [
+      { id: 'invoices' as ViewType, label: 'Invoices', icon: FileText },
+      { id: 'receipts' as ViewType, label: 'Receipts', icon: ClipboardList },
+      { id: 'delivery_notes' as ViewType, label: 'Delivery Notes', icon: Truck },
+      { id: 'credit_notes' as ViewType, label: 'Credit Notes / Returns', icon: RotateCcw },
+    ],
+  },
+  {
+    id: 'procurement',
+    label: 'Procurement',
+    icon: ShoppingCart,
+    children: [
+      { id: 'purchase_orders' as ViewType, label: 'Purchase Orders', icon: ShoppingBag },
+      { id: 'suppliers' as ViewType, label: 'Suppliers', icon: Users },
+      { id: 'grn' as ViewType, label: 'GRN', icon: Package },
+      { id: 'mro_issues' as ViewType, label: 'MRO Issues', icon: Wrench },
+      { id: 'procurement_hub' as ViewType, label: 'Procurement Hub', icon: ShoppingCart },
+    ],
+  },
+  {
+    id: 'production',
+    label: 'Production',
+    icon: Factory,
+    children: [
+      { id: 'bom' as ViewType, label: 'Bills of Materials', icon: Boxes },
+      { id: 'production_orders' as ViewType, label: 'Production Orders', icon: Factory },
+    ],
+  },
+  {
+    id: 'contacts',
+    label: 'Contacts',
+    icon: Contact,
+    children: [
+      { id: 'customers' as ViewType, label: 'Customers', icon: UserRound },
+      { id: 'suppliers_contact' as ViewType, label: 'Suppliers', icon: Building },
+    ],
+  },
+  {
+    id: 'insights',
+    label: 'Insights',
+    icon: TrendingUp,
+    children: [
+      { id: 'analytics' as ViewType, label: 'Analytics', icon: BarChart3 },
+      { id: 'forecast' as ViewType, label: 'Forecast', icon: LineChart },
+      { id: 'reports' as ViewType, label: 'Reports', icon: FileText },
+      { id: 'warranties' as ViewType, label: 'Warranties', icon: ShieldCheck },
+      { id: 'alerts' as ViewType, label: 'Alerts', icon: Bell, badge: '!' },
+    ],
+  },
 ];
 
-export function Sidebar({ currentView, onViewChange, isOpen, onToggle }: SidebarProps) {
+const footerItems = [
+  { id: 'help' as ViewType, label: 'Help & Tutorials', icon: CircleHelp },
+  { id: 'settings' as ViewType, label: 'Settings', icon: Settings },
+];
+
+const NavButton = ({ 
+  item, 
+  isSub = false, 
+  isCollapsed, 
+  isActive, 
+  onClick 
+}: { 
+  item: any, 
+  isSub?: boolean, 
+  isCollapsed: boolean, 
+  isActive: boolean, 
+  onClick: () => void
+}) => {
+  return (
+    <button
+      title={item.label}
+      onClick={onClick}
+      className={cn(
+        "flex h-10 items-center transition-colors duration-200 group relative rounded-lg",
+        isCollapsed 
+          ? "w-full justify-center px-0 mx-0" 
+          : cn("w-[calc(100%-16px)] mx-2 gap-3 px-4", isSub ? "pl-10" : "px-4"),
+        isActive
+          ? "bg-[#102A5C] text-[#38BDF8]"
+          : "text-slate-300 hover:bg-white/10 hover:text-white"
+      )}
+    >
+      <item.icon className={cn(
+        "w-5 h-5 shrink-0 transition-colors",
+        isActive ? "text-[#38BDF8]" : "text-slate-400 group-hover:text-white"
+      )} />
+      {!isCollapsed && (
+        <span className={cn(
+          "text-[13px] font-semibold tracking-tight truncate transition-opacity duration-300",
+          isActive ? "opacity-100" : "opacity-80 group-hover:opacity-100"
+        )}>
+          {item.label}
+        </span>
+      )}
+      {!isCollapsed && item.badge && (
+        <span className="absolute right-4 bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-md min-w-[18px] text-center">
+          {item.badge}
+        </span>
+      )}
+      {isCollapsed && isActive && (
+        <div className="absolute left-0 w-1 h-6 bg-[#38BDF8] rounded-r-full" />
+      )}
+    </button>
+  );
+};
+
+export function Sidebar({ 
+  currentView, 
+  onViewChange, 
+  isOpen, 
+  onToggle, 
+  isCollapsed, 
+  onToggleCollapse 
+}: SidebarProps) {
   const { user } = useAuth();
   const [isLargeScreen, setIsLargeScreen] = React.useState(false);
   const [expandedSections, setExpandedSections] = React.useState<Record<string, boolean>>({
-    sales: true,
-    procurement: true,
+    sales: false,
+    procurement: false,
     production: false,
-    contacts: true,
+    contacts: false,
     insights: false
   });
 
   const toggleSection = (section: string) => {
-    setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
+    if (isCollapsed) {
+      onToggleCollapse();
+      setExpandedSections(prev => ({ ...prev, [section]: true }));
+    } else {
+      setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
+    }
   };
 
   React.useEffect(() => {
-    const checkScreen = () => setIsLargeScreen(window.innerWidth >= 1024);
+    const checkScreen = () => setIsLargeScreen(window.innerWidth >= 768);
     checkScreen();
     window.addEventListener('resize', checkScreen);
     return () => window.removeEventListener('resize', checkScreen);
   }, []);
+
+  const handleNavClick = (id: ViewType) => {
+    if (isCollapsed) {
+      onToggleCollapse();
+      // Find if this ID belongs to a group and expand it
+      const parentGroup = menuGroups.find(group => 
+        group.children.some(child => child.id === id)
+      );
+      if (parentGroup) {
+        setExpandedSections(prev => ({ ...prev, [parentGroup.id]: true }));
+      }
+    }
+    
+    onViewChange(id);
+    if (window.innerWidth < 768) onToggle();
+  };
 
   return (
     <>
@@ -66,7 +201,7 @@ export function Sidebar({ currentView, onViewChange, isOpen, onToggle }: Sidebar
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onToggle}
-            className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+            className="fixed inset-0 bg-black/50 z-40 md:hidden"
           />
         )}
       </AnimatePresence>
@@ -75,307 +210,145 @@ export function Sidebar({ currentView, onViewChange, isOpen, onToggle }: Sidebar
       <motion.aside
         initial={false}
         animate={{ 
-          x: isOpen || isLargeScreen ? 0 : -280 
+          x: isOpen || isLargeScreen ? 0 : -260,
+          width: isLargeScreen ? (isCollapsed ? 64 : 260) : 260
         }}
         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
         className={cn(
-          "fixed top-0 left-0 bottom-0 w-[280px] bg-brand-sidebar text-[#e0e0e0] z-50 flex flex-col lg:translate-x-0 transition-none border-r border-brand-border h-screen",
-          !isOpen && "lg:block"
+          "fixed top-0 left-0 bottom-0 bg-[#0F172A] text-slate-300 z-50 flex flex-col border-r border-[#1E293B] h-screen transition-all duration-300 overflow-visible",
+          !isOpen && "hidden md:flex"
         )}
       >
-        <div className="p-6 shrink-0 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-[#10b981] rounded-lg flex items-center justify-center shadow-lg shadow-[#10b981]/20">
-              <BarChart3 className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-lg font-extrabold text-white leading-none">InventoryPro</h1>
-              <p className="text-[10px] text-zinc-500 font-medium mt-1 uppercase tracking-wider">Smart Decisions</p>
-            </div>
-          </div>
-          <button 
-            onClick={onToggle}
-            className="lg:hidden p-2 hover:bg-white/10 rounded-lg text-zinc-400 transition-colors"
+        {/* Toggle Button */}
+        {isLargeScreen && (
+          <button
+            onClick={onToggleCollapse}
+            className="absolute -right-4 top-16 w-8 h-8 bg-white border border-slate-300 rounded-full flex items-center justify-center text-[#0F172A] shadow-lg hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-all z-[80]"
+            aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
-            <X className="w-5 h-5" />
+            {isCollapsed ? (
+              <ChevronRight className="w-4 h-4" />
+            ) : (
+              <ChevronLeft className="w-4 h-4" />
+            )}
           </button>
+        )}
+
+        {/* Brand Header */}
+        <div className={cn(
+          "p-6 shrink-0 flex items-center overflow-hidden transition-all duration-300",
+          isCollapsed ? "justify-center px-2" : "gap-3"
+        )}>
+          <div className="w-10 h-10 bg-[#10b981] rounded-lg flex items-center justify-center shadow-lg shadow-[#10b981]/20 shrink-0">
+            <BarChart3 className={cn("w-6 h-6 text-white transition-all", isCollapsed ? "w-5 h-5" : "w-6 h-6")} />
+          </div>
+          {!isCollapsed && (
+            <div className="flex-1 flex items-center justify-between min-w-0">
+              <motion.div 
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="overflow-hidden whitespace-nowrap"
+              >
+                <h1 className="text-lg font-extrabold text-white leading-none">InventoryPro</h1>
+                <p className="text-[10px] text-slate-500 font-medium mt-1 uppercase tracking-wider">Smart Decisions</p>
+              </motion.div>
+              <button 
+                onClick={onToggle}
+                className="md:hidden p-2 hover:bg-white/10 rounded-lg text-slate-400 transition-colors shrink-0"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          )}
         </div>
 
-        <nav className="flex-1 px-4 space-y-8 mt-4 overflow-y-auto no-scrollbar pb-10">
-          <div className="space-y-1">
-            {navItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => {
-                  onViewChange(item.id);
-                  if (window.innerWidth < 1024) onToggle();
-                }}
-                className={cn(
-                  "w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 group",
-                  currentView === item.id
-                    ? "bg-blue-600/10 text-blue-400"
-                    : "text-zinc-400 hover:bg-white/5 hover:text-white"
-                )}
-              >
-                <item.icon className={cn(
-                  "w-4 h-4 transition-colors",
-                  currentView === item.id ? "text-blue-400" : "text-zinc-500 group-hover:text-zinc-300"
-                )} />
-                <span className="text-xs font-semibold tracking-tight">{item.label}</span>
-              </button>
-            ))}
-          </div>
+        {/* Navigation Items */}
+        <div className="flex-1 relative min-h-0 overflow-hidden">
+          {/* Top Scroll Fade */}
+          <div className="absolute top-0 left-0 right-0 h-4 bg-gradient-to-b from-[#0F172A] to-transparent z-10 pointer-events-none" />
+          
+          <nav className={cn(
+            "h-full px-3 py-4 pb-10 scrollbar-hide overflow-x-visible",
+            isCollapsed ? "overflow-y-visible space-y-4" : "overflow-y-auto space-y-6"
+          )}>
+            {/* Top-level Items */}
+            <div className="space-y-1">
+              {menuItems.map((item) => (
+                <NavButton 
+                  key={item.id} 
+                  item={item} 
+                  isCollapsed={isCollapsed} 
+                  isActive={currentView === item.id} 
+                  onClick={() => handleNavClick(item.id)}
+                />
+              ))}
+            </div>
 
-          <div className="space-y-2">
-            <button 
-              onClick={() => toggleSection('sales')}
-              className="w-full px-4 text-[10px] font-bold text-zinc-500 uppercase tracking-widest flex items-center justify-between hover:text-zinc-300 transition-colors"
-            >
-              Sales 
-              <ChevronDown className={cn("w-3 h-3 transition-transform duration-200", !expandedSections.sales && "-rotate-90")} />
-            </button>
-            <AnimatePresence initial={false}>
-              {expandedSections.sales && (
-                <motion.div 
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="space-y-1 overflow-hidden"
-                >
-                  {[
-                    { id: 'invoices' as ViewType, label: 'Invoices', icon: FileText },
-                    { id: 'receipts' as ViewType, label: 'Receipts', icon: Receipt },
-                    { id: 'delivery_notes' as ViewType, label: 'Delivery Notes', icon: Truck },
-                    { id: 'credit_notes' as ViewType, label: 'Credit Notes / Returns', icon: FileX },
-                  ].map((sub) => (
+            {/* Collapsed Group Icons */}
+            {isCollapsed ? (
+              <div className="space-y-1">
+                {menuGroups.map((group) => (
+                  <NavButton 
+                    key={group.id} 
+                    item={group} 
+                    isCollapsed={true} 
+                    isActive={group.children.some(child => child.id === currentView)} 
+                    onClick={() => toggleSection(group.id)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {menuGroups.map((group) => (
+                  <div key={group.id} className="space-y-1">
                     <button 
-                      key={sub.id} 
-                      onClick={() => {
-                        onViewChange(sub.id);
-                        if (window.innerWidth < 1024) onToggle();
-                      }}
-                      className={cn(
-                        "w-full flex items-center gap-3 px-10 py-2 text-[11px] font-medium transition-colors group",
-                        currentView === sub.id ? "text-blue-400" : "text-zinc-500 hover:text-zinc-300"
-                      )}
+                      onClick={() => toggleSection(group.id)}
+                      className="w-full px-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center justify-between hover:text-white transition-colors mb-2"
                     >
-                      <sub.icon className={cn(
-                        "w-3.5 h-3.5 transition-colors",
-                        currentView === sub.id ? "text-blue-400" : "text-zinc-500 group-hover:text-zinc-300"
-                      )} />
-                      {sub.label}
+                      <div className="flex items-center gap-2">
+                        <group.icon className="w-3.5 h-3.5" />
+                        {group.label}
+                      </div>
+                      <ChevronDown className={cn("w-3 h-3 transition-transform duration-200", !expandedSections[group.id] && "-rotate-90")} />
                     </button>
-                  ))}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+                    {expandedSections[group.id] && (
+                      <div className="w-full space-y-1">
+                        {group.children.map((child) => (
+                          <NavButton 
+                            key={child.id} 
+                            item={child} 
+                            isSub={true} 
+                            isCollapsed={false} 
+                            isActive={currentView === child.id} 
+                            onClick={() => handleNavClick(child.id)}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </nav>
 
-          <div className="space-y-2">
-            <button 
-              onClick={() => toggleSection('procurement')}
-              className="w-full px-4 text-[10px] font-bold text-zinc-500 uppercase tracking-widest flex items-center justify-between hover:text-zinc-300 transition-colors"
-            >
-              Procurement 
-              <ChevronDown className={cn("w-3 h-3 transition-transform duration-200", !expandedSections.procurement && "-rotate-90")} />
-            </button>
-            <AnimatePresence initial={false}>
-              {expandedSections.procurement && (
-                <motion.div 
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="space-y-1 overflow-hidden"
-                >
-                  {[
-                    { id: 'purchase_orders' as ViewType, label: 'Purchase Orders', icon: ClipboardList },
-                    { id: 'grn' as ViewType, label: 'GRN', icon: Package },
-                    { id: 'mro_issues' as ViewType, label: 'MRO Issues', icon: Wrench },
-                    { id: 'procurement_hub' as ViewType, label: 'Procurement Hub', icon: ShoppingCart },
-                  ].map((sub) => (
-                    <button 
-                      key={sub.id} 
-                      onClick={() => {
-                        onViewChange(sub.id);
-                        if (window.innerWidth < 1024) onToggle();
-                      }}
-                      className={cn(
-                        "w-full flex items-center gap-3 px-10 py-2 text-[11px] font-medium transition-colors group",
-                        currentView === sub.id ? "text-blue-400" : "text-zinc-500 hover:text-zinc-300"
-                      )}
-                    >
-                      <sub.icon className={cn(
-                        "w-3.5 h-3.5 transition-colors",
-                        currentView === sub.id ? "text-blue-400" : "text-zinc-500 group-hover:text-zinc-300"
-                      )} />
-                      {sub.label}
-                    </button>
-                  ))}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+          {/* Bottom Scroll Fade */}
+          <div className="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-[#0F172A] to-transparent z-10 pointer-events-none" />
+        </div>
 
-          <div className="space-y-2">
-            <button 
-              onClick={() => toggleSection('production')}
-              className="w-full px-4 text-[10px] font-bold text-zinc-500 uppercase tracking-widest flex items-center justify-between hover:text-zinc-300 transition-colors"
-            >
-              Production 
-              <ChevronDown className={cn("w-3 h-3 transition-transform duration-200", !expandedSections.production && "-rotate-90")} />
-            </button>
-            <AnimatePresence initial={false}>
-              {expandedSections.production && (
-                <motion.div 
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="space-y-1 overflow-hidden"
-                >
-                  {[
-                    { id: 'bom' as ViewType, label: 'Bills of Materials', icon: Layers },
-                    { id: 'production_orders' as ViewType, label: 'Production Orders', icon: Factory },
-                  ].map((sub) => (
-                    <button 
-                      key={sub.id} 
-                      onClick={() => {
-                        onViewChange(sub.id);
-                        if (window.innerWidth < 1024) onToggle();
-                      }}
-                      className={cn(
-                        "w-full flex items-center gap-3 px-10 py-2 text-[11px] font-medium transition-colors group",
-                        currentView === sub.id ? "text-blue-400" : "text-zinc-500 hover:text-zinc-300"
-                      )}
-                    >
-                      <sub.icon className={cn(
-                        "w-3.5 h-3.5 transition-colors",
-                        currentView === sub.id ? "text-blue-400" : "text-zinc-500 group-hover:text-zinc-300"
-                      )} />
-                      {sub.label}
-                    </button>
-                  ))}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-
-          <div className="space-y-2">
-            <button 
-              onClick={() => toggleSection('contacts')}
-              className="w-full px-4 text-[10px] font-bold text-zinc-500 uppercase tracking-widest flex items-center justify-between hover:text-zinc-300 transition-colors"
-            >
-              Contacts 
-              <ChevronDown className={cn("w-3 h-3 transition-transform duration-200", !expandedSections.contacts && "-rotate-90")} />
-            </button>
-            <AnimatePresence initial={false}>
-              {expandedSections.contacts && (
-                <motion.div 
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="space-y-1 overflow-hidden"
-                >
-                  {[
-                    { id: 'customers' as ViewType, label: 'Customers', icon: User },
-                    { id: 'suppliers' as ViewType, label: 'Suppliers', icon: Building },
-                  ].map((sub) => (
-                    <button 
-                      key={sub.id} 
-                      onClick={() => {
-                        onViewChange(sub.id);
-                        if (window.innerWidth < 1024) onToggle();
-                      }}
-                      className={cn(
-                        "w-full flex items-center gap-3 px-10 py-2 text-[11px] font-medium transition-colors group",
-                        currentView === sub.id ? "text-blue-400" : "text-zinc-500 hover:text-zinc-300"
-                      )}
-                    >
-                      <sub.icon className={cn(
-                        "w-3.5 h-3.5 transition-colors",
-                        currentView === sub.id ? "text-blue-400" : "text-zinc-500 group-hover:text-zinc-300"
-                      )} />
-                      {sub.label}
-                    </button>
-                  ))}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-
-          <div className="space-y-2">
-             <button 
-               onClick={() => toggleSection('insights')}
-               className="w-full px-4 text-[10px] font-bold text-zinc-500 uppercase tracking-widest flex items-center justify-between hover:text-zinc-300 transition-colors"
-             >
-               Insights 
-               <ChevronDown className={cn("w-3 h-3 transition-transform duration-200", !expandedSections.insights && "-rotate-90")} />
-             </button>
-             <AnimatePresence initial={false}>
-               {expandedSections.insights && (
-                 <motion.div 
-                   initial={{ height: 0, opacity: 0 }}
-                   animate={{ height: "auto", opacity: 1 }}
-                   exit={{ height: 0, opacity: 0 }}
-                   transition={{ duration: 0.2 }}
-                   className="space-y-1 overflow-hidden"
-                 >
-                    {insightsItems.map((item) => (
-                      <button
-                        key={item.id}
-                        onClick={() => {
-                          onViewChange(item.id);
-                          if (window.innerWidth < 1024) onToggle();
-                        }}
-                        className={cn(
-                          "w-full flex items-center justify-between gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 group",
-                          currentView === item.id
-                            ? "bg-blue-600/10 text-blue-400"
-                            : "text-zinc-400 hover:bg-white/5 hover:text-white"
-                        )}
-                      >
-                        <div className="flex items-center gap-3">
-                          <item.icon className={cn(
-                            "w-4 h-4 transition-colors",
-                            currentView === item.id ? "text-blue-400" : "text-zinc-500 group-hover:text-zinc-300"
-                          )} />
-                          <span className="text-xs font-semibold tracking-tight">{item.label}</span>
-                        </div>
-                        {item.badge && (
-                          <span className="bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-md min-w-[18px] text-center">
-                            {item.badge}
-                          </span>
-                        )}
-                      </button>
-                    ))}
-                 </motion.div>
-               )}
-             </AnimatePresence>
-          </div>
-        </nav>
-
-        <div className="p-4 space-y-1 mt-auto shrink-0 border-t border-white/5 bg-brand-sidebar">
-           <button 
-             onClick={() => {
-               onViewChange('help');
-               if (window.innerWidth < 1024) onToggle();
-             }}
-             className={cn(
-               "w-full flex items-center gap-3 px-4 py-2 transition-colors text-xs font-medium",
-               currentView === 'help' ? "text-blue-400" : "text-zinc-500 hover:text-zinc-300"
-             )}
-           >
-             <HelpCircle className="w-4 h-4" /> Help & Tutorials
-           </button>
-           <button 
-             onClick={() => onViewChange('settings')}
-             className="w-full flex items-center gap-3 px-4 py-2 text-zinc-500 hover:text-zinc-300 transition-colors text-xs font-medium"
-           >
-             <Settings className="w-4 h-4" /> Settings
-           </button>
+        {/* Footer Area */}
+        <div className={cn(
+          "p-4 space-y-1 mt-auto shrink-0 border-t border-[#1E293B] bg-[#0F172A]",
+          isCollapsed && "flex flex-col items-center"
+        )}>
+           {footerItems.map((item) => (
+             <NavButton 
+               key={item.id} 
+               item={item} 
+               isCollapsed={isCollapsed} 
+               isActive={currentView === item.id} 
+               onClick={() => handleNavClick(item.id)}
+             />
+           ))}
         </div>
       </motion.aside>
     </>
@@ -391,7 +364,7 @@ export function Navbar({ onMenuClick }: { onMenuClick: () => void }) {
       <div className="flex items-center gap-4 flex-1">
         <button
           onClick={onMenuClick}
-          className="lg:hidden p-2 text-slate-500 hover:bg-slate-100 rounded-lg"
+          className="md:hidden p-2 text-slate-500 hover:bg-slate-100 rounded-lg"
         >
           <Menu className="w-6 h-6" />
         </button>
@@ -401,7 +374,7 @@ export function Navbar({ onMenuClick }: { onMenuClick: () => void }) {
           <input
             type="text"
             placeholder="Search..."
-            className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-sm focus:outline-none focus:border-blue-500 focus:bg-white transition-all placeholder-slate-400"
+            className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg bg-slate-100 text-sm focus:outline-none focus:border-blue-500 focus:bg-white transition-all placeholder-slate-400"
           />
         </div>
       </div>
@@ -411,7 +384,6 @@ export function Navbar({ onMenuClick }: { onMenuClick: () => void }) {
           <button className="p-2.5 text-slate-500 hover:bg-slate-100 hover:text-blue-600 rounded-full relative transition-all duration-300 transform group-hover:scale-105 group-active:scale-95">
             <Bell className="w-5 h-5 transition-transform duration-300" />
             
-            {/* Pulsing ring for high visibility */}
             <span className="absolute top-2 right-2 flex h-4 w-4">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
               <span className="relative inline-flex items-center justify-center rounded-full h-4 w-4 bg-rose-500 text-[9px] font-black text-white shadow-sm ring-2 ring-white overflow-hidden">
@@ -419,9 +391,6 @@ export function Navbar({ onMenuClick }: { onMenuClick: () => void }) {
               </span>
             </span>
           </button>
-          
-          {/* Subtle glow effect on hover */}
-          <div className="absolute inset-0 bg-blue-500/0 group-hover:bg-blue-500/5 rounded-full blur-xl transition-all duration-500 -z-10" />
         </div>
 
         <div className="flex items-center gap-2 group border-l border-slate-100 pl-4 ml-1 sm:ml-0 relative">
@@ -439,7 +408,7 @@ export function Navbar({ onMenuClick }: { onMenuClick: () => void }) {
             title="Log out"
           >
              {user?.photoURL ? (
-               <img src={user.photoURL} alt="Avatar" className="w-full h-full object-cover" />
+               <img src={user.photoURL} alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
              ) : (
                <User className="w-4 h-4 sm:w-5 sm:h-5 text-slate-600 group-hover:text-blue-600" />
              )}
@@ -452,8 +421,8 @@ export function Navbar({ onMenuClick }: { onMenuClick: () => void }) {
 
 export function BottomNav({ currentView, onViewChange }: { currentView: ViewType, onViewChange: (view: ViewType) => void }) {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 lg:hidden flex items-center justify-between px-2 pb-safe z-40 h-16 sm:h-20 shadow-[0_-1px_10px_rgba(0,0,0,0.05)]">
-      {navItems.map((item) => (
+    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 md:hidden flex items-center justify-between px-2 pb-safe z-40 h-16 sm:h-20 shadow-[0_-1px_10px_rgba(0,0,0,0.05)]">
+      {menuItems.map((item) => (
         <button
           key={item.id}
           onClick={() => onViewChange(item.id)}

@@ -144,14 +144,14 @@ export function Dashboard({ onNavigate }: { onNavigate?: (view: ViewType) => voi
   }
 
   return (
-    <div className="bg-[#F5F7FB] min-h-screen -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-8 font-sans scroll-smooth">
-      <div className="max-w-[1180px] mx-auto space-y-6">
+    <div className="bg-[#F5F7FB] min-h-screen w-full pt-1 pb-8 font-sans scroll-smooth">
+      <div className="w-full max-w-none space-y-3 min-w-0">
         
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 text-left">
           <div>
-            <h1 className="text-2xl font-bold text-[#06132B]">Inventory Intelligence</h1>
-            <p className="text-[15px] text-[#526789]">Advanced analytical overview of your supply chain health</p>
+            <h1 className="text-xl md:text-2xl font-bold text-[#06132B]">Inventory Intelligence</h1>
+            <p className="text-sm text-[#526789] mt-1">Advanced analytical overview of your supply chain health</p>
           </div>
           <div className="flex items-center gap-3">
              <button className="px-4 py-2 bg-white border border-[#DDE5F0] rounded-xl text-xs font-bold text-[#06132B] shadow-sm hover:bg-slate-50 transition-all flex items-center gap-2">
@@ -166,7 +166,7 @@ export function Dashboard({ onNavigate }: { onNavigate?: (view: ViewType) => voi
         </div>
 
         {/* Top Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-6 min-w-0">
           <SummaryCard 
             title="Inventory Total"
             value={`${currency}${totalCapital.toLocaleString()}`}
@@ -185,7 +185,7 @@ export function Dashboard({ onNavigate }: { onNavigate?: (view: ViewType) => voi
         </div>
 
         {/* Metric Row */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 min-w-0">
            <WhiteMetricCard 
              title="Active Alerts"
              value={activeAlertsCount.toString()}
@@ -218,7 +218,7 @@ export function Dashboard({ onNavigate }: { onNavigate?: (view: ViewType) => voi
         </div>
 
         {/* Main Sections Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6 min-w-0">
           
           {/* Section: Smart Alerts */}
           <div className="bg-white border border-[#DDE5F0] rounded-xl shadow-sm p-6 flex flex-col min-h-[420px] text-left">
@@ -327,7 +327,7 @@ export function Dashboard({ onNavigate }: { onNavigate?: (view: ViewType) => voi
         </div>
 
         {/* Bottom Interactive Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6 min-w-0">
           
           {/* Cash Tied by Category */}
           <div className="bg-white border border-[#DDE5F0] rounded-xl shadow-sm p-5 md:p-6 flex flex-col min-w-0">

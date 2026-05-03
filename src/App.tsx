@@ -42,6 +42,7 @@ import { SettingsProvider, useSettings } from './contexts/SettingsContext';
 function AppContent() {
   const [currentView, setCurrentView] = useState<ViewType>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const { user, loading: authLoading, login, connectionError } = useAuth();
   const { profile, company, loading: settingsLoading, createCompany } = useSettings();
   const [companyName, setCompanyName] = useState('');
@@ -222,14 +223,18 @@ function AppContent() {
         onViewChange={setCurrentView} 
         isOpen={isSidebarOpen} 
         onToggle={() => setIsSidebarOpen(!isSidebarOpen)} 
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
       />
       
       <div className={cn(
-        "transition-all duration-300 lg:pl-[280px] min-h-screen flex flex-col",
+        "transition-all duration-300 min-h-screen flex flex-col min-w-0 overflow-x-hidden",
+        isSidebarCollapsed ? "md:pl-[64px]" : "md:pl-[260px]",
+        "pl-0"
       )}>
         <Navbar onMenuClick={() => setIsSidebarOpen(true)} />
         
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 xl:p-10 mb-20 lg:mb-0 max-w-[1600px] w-full mx-auto">
+        <main className="flex-1 px-4 pt-3 pb-4 sm:px-6 sm:pt-4 sm:pb-6 lg:px-8 lg:pt-4 lg:pb-8 xl:px-10 xl:pt-4 xl:pb-10 mb-20 lg:mb-0 w-full mx-auto min-w-0">
           <AnimatePresence mode="wait">
             <motion.div
               key={currentView}
