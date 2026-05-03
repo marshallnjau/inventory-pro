@@ -184,39 +184,6 @@ export function Dashboard({ onNavigate }: { onNavigate?: (view: ViewType) => voi
           />
         </div>
 
-        {/* Metric Row */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 min-w-0">
-           <WhiteMetricCard 
-             title="Active Alerts"
-             value={activeAlertsCount.toString()}
-             subtitle="Critical interventions"
-             icon={Bell}
-             variant="danger"
-             gradient="from-[#F04455] to-[#FB6B6B]"
-           />
-           <WhiteMetricCard 
-             title="Total SKUs"
-             value={totalSKUs.toLocaleString()}
-             subtitle="Active lines"
-             icon={Package}
-             change="+2.4%"
-           />
-           <WhiteMetricCard 
-             title="Low Stock Items"
-             value={lowStockCount.toString()}
-             subtitle="At critical level"
-             icon={AlertTriangle}
-             variant="warning"
-           />
-           <WhiteMetricCard 
-             title="Forecast Growth"
-             value="14.8%"
-             subtitle="Next 30 days"
-             icon={TrendingUp}
-             variant="success"
-           />
-        </div>
-
         {/* Main Sections Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6 min-w-0">
           

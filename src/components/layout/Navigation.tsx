@@ -101,7 +101,8 @@ const NavButton = ({
   isSub?: boolean, 
   isCollapsed: boolean, 
   isActive: boolean, 
-  onClick: () => void
+  onClick: () => void,
+  key?: React.Key
 }) => {
   return (
     <button
