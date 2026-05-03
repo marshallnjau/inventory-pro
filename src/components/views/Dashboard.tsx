@@ -294,7 +294,7 @@ export function Dashboard({ onNavigate }: { onNavigate?: (view: ViewType) => voi
         </div>
 
         {/* Bottom Interactive Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6 min-w-0">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 min-w-0">
           
           {/* Cash Tied by Category */}
           <div className="bg-white border border-[#DDE5F0] rounded-xl shadow-sm p-5 md:p-6 flex flex-col min-w-0">
@@ -385,36 +385,6 @@ export function Dashboard({ onNavigate }: { onNavigate?: (view: ViewType) => voi
                 </ResponsiveContainer>
              </div>
           </div>
-
-          {/* Quick Operations */}
-          <div className="bg-white border border-[#DDE5F0] rounded-xl shadow-sm p-6 flex flex-col text-left md:col-span-2 lg:col-span-1">
-             <div className="mb-6">
-               <h2 className="text-lg font-bold text-[#06132B]">Quick Operations</h2>
-               <p className="text-sm text-[#526789]">Frequent system actions</p>
-             </div>
-             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-3 flex-1">
-                {[
-                  { label: 'Purchases', icon: ShoppingCart, view: 'procurement_hub', color: 'bg-blue-50 text-blue-600' },
-                  { label: 'Demand', icon: TrendingUp, view: 'inventory', color: 'bg-emerald-50 text-emerald-600' },
-                  { label: 'Suppliers', icon: Building, view: 'inventory', color: 'bg-amber-50 text-amber-600' },
-                  { label: 'Inventory', icon: Boxes, view: 'inventory', color: 'bg-indigo-50 text-indigo-600' },
-                  { label: 'BOM', icon: Grid, view: 'inventory', color: 'bg-rose-50 text-rose-600' },
-                  { label: 'Reports', icon: FileText, view: 'inventory', color: 'bg-slate-50 text-slate-600' },
-                ].map((btn, i) => (
-                  <button 
-                    key={i} 
-                    onClick={() => onNavigate?.(btn.view as ViewType)}
-                    className="flex flex-col items-center justify-center p-3 border border-[#DDE5F0] rounded-xl bg-white hover:border-[#2F80ED] hover:bg-slate-50 transition-all group min-w-0"
-                  >
-                    <div className={cn("w-9 h-9 rounded-lg flex items-center justify-center mb-2 group-hover:scale-110 transition-transform", btn.color)}>
-                      <btn.icon className="w-4.5 h-4.5" />
-                    </div>
-                    <span className="text-[11px] font-bold text-[#06132B] truncate w-full">{btn.label}</span>
-                  </button>
-                ))}
-             </div>
-          </div>
-
         </div>
 
       </div>

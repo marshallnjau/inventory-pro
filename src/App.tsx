@@ -24,7 +24,7 @@ import { PurchaseOrders } from './components/views/procurement/PurchaseOrders';
 import { GRN } from './components/views/procurement/GRN';
 import { MROIssues } from './components/views/procurement/MROIssues';
 import { ProcurementHub } from './components/views/procurement/ProcurementHub';
-import { Invoices } from './components/views/sales/Invoices';
+import { SalesHub } from './components/views/sales/SalesHub';
 import { Receipts } from './components/views/sales/Receipts';
 import { DeliveryNotes } from './components/views/sales/DeliveryNotes';
 import { CreditNotes } from './components/views/sales/CreditNotes';
@@ -193,7 +193,10 @@ function AppContent() {
       case 'inventory': return <Inventory />;
       case 'categories': return <Categories />;
       case 'analytics': return <Analytics />;
-      case 'invoices': return <Invoices />;
+      case 'invoices':
+      case 'quotations':
+      case 'proforma': 
+        return <SalesHub defaultView={currentView} />;
       case 'receipts': return <Receipts />;
       case 'delivery_notes': return <DeliveryNotes />;
       case 'credit_notes': return <CreditNotes />;

@@ -170,12 +170,42 @@
       "type": "object",
       "properties": {
         "customerId": { "type": "string" },
+        "customer": { "type": "string" },
         "date": { "type": "string" },
         "dueDate": { "type": "string" },
         "amount": { "type": "number" },
-        "status": { "type": "string", "enum": ["paid", "pending", "overdue", "draft"] }
+        "status": { "type": "string", "enum": ["paid", "pending", "overdue", "draft", "proforma"] },
+        "type": { "type": "string", "enum": ["standard", "proforma"] },
+        "items": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "createdBy": { "type": "string" },
+        "originalProforma": { "type": "string" },
+        "isConverted": { "type": "boolean" },
+        "convertedTo": { "type": "string" },
+        "source_type": { "type": "string", "enum": ["quotation", "proforma", "direct"] },
+        "source_id": { "type": "string" },
+        "converted_date": { "type": "string", "format": "date-time" }
       },
-      "required": ["customerId", "date", "dueDate", "amount", "status"]
+      "required": ["date", "amount", "status"]
+    },
+    "Quotation": {
+      "title": "Quotation",
+      "description": "Sales quotation for a customer",
+      "type": "object",
+      "properties": {
+        "customer": { "type": "string" },
+        "date": { "type": "string" },
+        "expiryDate": { "type": "string" },
+        "amount": { "type": "number" },
+        "status": { "type": "string", "enum": ["draft", "sent", "accepted", "expired", "converted"] },
+        "items": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "createdBy": { "type": "string" },
+        "convertedTo": { "type": "string" },
+        "converted_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["customer", "date", "amount", "status"]
     },
     "Supplier": {
       "title": "Supplier",
@@ -231,6 +261,7 @@
     "/companies/{companyId}/grns": { "schema": "GoodReceiptNote", "description": "Good receipt notes" },
     "/companies/{companyId}/mroIssues": { "schema": "MROIssue", "description": "MRO stock issues" },
     "/companies/{companyId}/invoices": { "schema": "Invoice", "description": "Sales invoices" },
+    "/companies/{companyId}/quotations": { "schema": "Quotation", "description": "Sales quotations" },
     "/companies/{companyId}/alerts": { "schema": "InventoryAlert", "description": "Inventory alerts" },
     "/companies/{companyId}/stockMovements": { "schema": "StockMovement", "description": "Stock history" }
   }

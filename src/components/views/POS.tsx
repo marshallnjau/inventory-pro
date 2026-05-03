@@ -138,8 +138,11 @@ export function POS() {
         currency: currency
       };
       
-      await addDoc(collection(db, `companies/${profile.companyId}/receipts`), receiptData);
+      // 1. Create Receipt
+      const receiptRef = await addDoc(collection(db, `companies/${profile.companyId}/receipts`), receiptData);
+      const receiptId = receiptRef.id;
 
+      // 2. Reduce Inventory & Create Movements
       for (const item of cart) {
         const productRef = doc(db, `companies/${profile.companyId}/products`, item.id);
         const original = products.find(p => p.id === item.id);
@@ -158,9 +161,31 @@ export function POS() {
           beforeQty,
           afterQty: beforeQty - item.quantity,
           createdAt: new Date().toISOString(),
-          createdBy: user.uid
+          createdBy: user.uid,
+          reference: receiptId
         });
       }
+
+      // 3. Generate Delivery Note (Explicit user request)
+      // Note: This does NOT reduce stock, as we already did that above.
+      const deliveryNoteId = `DN-POS-${Date.now()}`;
+      await setDoc(doc(db, `companies/${profile.companyId}/deliveryNotes`, deliveryNoteId), {
+        id: deliveryNoteId,
+        orderId: receiptId,
+        customer: receiptData.customerName,
+        date: new Date().toISOString().split('T')[0],
+        status: 'delivered', // POS sales are usually delivered immediately
+        items: cart.map(item => ({
+          productId: item.id,
+          name: item.name,
+          quantity: item.quantity,
+          price: item.price,
+          sku: item.sku || ''
+        })),
+        createdAt: new Date().toISOString(),
+        createdBy: user.uid,
+        source: 'POS'
+      });
 
       setCart([]);
       setShowSuccess(true);

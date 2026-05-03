@@ -5,7 +5,7 @@ import {
   ShoppingCart, Factory, Users, ShieldCheck, AlertCircle, CircleHelp,
   Wrench, Building, ClipboardCheck, Layers, ClipboardList, Gauge,
   Receipt, Truck, FileX, ChevronLeft, ChevronRight, RotateCcw,
-  ShoppingBag, Boxes, Contact, TrendingUp, LineChart, UserRound
+  ShoppingBag, Boxes, Contact, TrendingUp, LineChart, UserRound, Clock
 } from 'lucide-react';
 import { ViewType } from '../../types';
 import { cn } from '../../lib/utils';
@@ -35,6 +35,8 @@ const menuGroups = [
     label: 'Sales',
     icon: Receipt,
     children: [
+      { id: 'quotations' as ViewType, label: 'Quotations', icon: FileText },
+      { id: 'proforma' as ViewType, label: 'Proforma Invoices', icon: Clock },
       { id: 'invoices' as ViewType, label: 'Invoices', icon: FileText },
       { id: 'receipts' as ViewType, label: 'Receipts', icon: ClipboardList },
       { id: 'delivery_notes' as ViewType, label: 'Delivery Notes', icon: Truck },
