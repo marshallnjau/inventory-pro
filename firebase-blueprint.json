@@ -101,12 +101,68 @@
       "description": "Order placed with a supplier",
       "type": "object",
       "properties": {
+        "poNumber": { "type": "string" },
         "supplierId": { "type": "string" },
-        "date": { "type": "string" },
-        "amount": { "type": "number" },
-        "status": { "type": "string", "enum": ["OPEN", "CLOSED", "DRAFT", "PENDING", "APPROVED", "SHIPPED", "RECEIVED"] }
+        "date": { "type": "string", "format": "date-time" },
+        "totalAmount": { "type": "number" },
+        "status": { "type": "string", "enum": ["DRAFT", "PENDING", "APPROVED", "SHIPPED", "RECEIVED", "CANCELLED"] },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "productId": { "type": "string" },
+              "quantity": { "type": "number" },
+              "unitPrice": { "type": "number" },
+              "receivedQuantity": { "type": "number" }
+            },
+            "required": ["productId", "quantity", "unitPrice"]
+          }
+        },
+        "notes": { "type": "string" }
       },
-      "required": ["supplierId", "date", "amount", "status"]
+      "required": ["poNumber", "supplierId", "date", "status", "items"]
+    },
+    "GoodReceiptNote": {
+      "title": "Good Receipt Note",
+      "description": "Record of goods received against a PO",
+      "type": "object",
+      "properties": {
+        "grnNumber": { "type": "string" },
+        "poId": { "type": "string" },
+        "receivedDate": { "type": "string", "format": "date-time" },
+        "receivedBy": { "type": "string" },
+        "supplierId": { "type": "string" },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "productId": { "type": "string" },
+              "orderedQuantity": { "type": "number" },
+              "receivedQuantity": { "type": "number" }
+            },
+            "required": ["productId", "receivedQuantity"]
+          }
+        },
+        "notes": { "type": "string" }
+      },
+      "required": ["grnNumber", "poId", "receivedDate", "items"]
+    },
+    "MROIssue": {
+      "title": "MRO Issue",
+      "description": "Maintenance, Repair, and Operations stock issue",
+      "type": "object",
+      "properties": {
+        "issueNumber": { "type": "string" },
+        "productId": { "type": "string" },
+        "quantity": { "type": "number" },
+        "issuedTo": { "type": "string" },
+        "department": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "notes": { "type": "string" }
+      },
+      "required": ["issueNumber", "productId", "quantity", "issuedTo", "date"]
     },
     "Invoice": {
       "title": "Invoice",
@@ -172,6 +228,8 @@
     "/companies/{companyId}/suppliers": { "schema": "Supplier", "description": "Suppliers" },
     "/companies/{companyId}/customers": { "schema": "Customer", "description": "Customers" },
     "/companies/{companyId}/purchaseOrders": { "schema": "PurchaseOrder", "description": "Purchase orders" },
+    "/companies/{companyId}/grns": { "schema": "GoodReceiptNote", "description": "Good receipt notes" },
+    "/companies/{companyId}/mroIssues": { "schema": "MROIssue", "description": "MRO stock issues" },
     "/companies/{companyId}/invoices": { "schema": "Invoice", "description": "Sales invoices" },
     "/companies/{companyId}/alerts": { "schema": "InventoryAlert", "description": "Inventory alerts" },
     "/companies/{companyId}/stockMovements": { "schema": "StockMovement", "description": "Stock history" }

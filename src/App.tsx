@@ -49,16 +49,16 @@ function AppContent() {
 
   if (connectionError) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-brand-bg p-6">
-        <div className="max-w-md w-full bg-white p-8 rounded-3xl border border-rose-100 shadow-2xl text-center">
-          <div className="w-16 h-16 bg-rose-50 rounded-2xl flex items-center justify-center mx-auto mb-6">
-            <WifiOff className="w-8 h-8 text-rose-500" />
+      <div className="min-h-screen flex items-center justify-center bg-brand-bg p-4 sm:p-6">
+        <div className="max-w-md w-full bg-white p-6 sm:p-8 rounded-3xl border border-rose-100 shadow-2xl text-center">
+          <div className="w-12 h-12 sm:w-16 sm:h-16 bg-rose-50 rounded-2xl flex items-center justify-center mx-auto mb-4 sm:mb-6">
+            <WifiOff className="w-6 h-6 sm:w-8 sm:h-8 text-rose-500" />
           </div>
-          <h2 className="text-xl font-bold text-slate-900 mb-2">Connection Issue</h2>
-          <p className="text-slate-500 text-sm mb-6">{connectionError}</p>
-          <div className="p-4 bg-slate-50 rounded-xl text-left mb-6">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Troubleshooting</p>
-            <ul className="text-xs text-slate-600 space-y-2 list-disc pl-4">
+          <h2 className="text-lg sm:text-xl font-bold text-slate-900 mb-2">Connection Issue</h2>
+          <p className="text-slate-500 text-xs sm:text-sm mb-6">{connectionError}</p>
+          <div className="p-3 sm:p-4 bg-slate-50 rounded-xl text-left mb-6">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Troubleshooting</p>
+            <ul className="text-[10px] sm:text-xs text-slate-600 space-y-1.5 list-disc pl-4">
               <li>Ensure the Firestore database was created in your Firebase Console.</li>
               <li>Check your internet connection.</li>
               <li>If the issue persists, try running the Firebase Setup again in AI Studio.</li>
@@ -66,7 +66,7 @@ function AppContent() {
           </div>
           <button 
             onClick={() => window.location.reload()}
-            className="w-full h-12 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all"
+            className="w-full h-11 sm:h-12 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all text-xs sm:text-sm"
           >
             Retry Connection
           </button>

@@ -149,7 +149,7 @@ export function Alerts() {
 
       {/* Tabs */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden text-left">
-        <div className="px-6 py-2 border-b border-slate-100 flex items-center gap-6 overflow-x-auto no-scrollbar">
+        <div className="px-4 sm:px-6 py-1 border-b border-slate-100 flex items-center gap-4 sm:gap-6 overflow-x-auto no-scrollbar">
           {[
             { id: 'all', label: 'All', count: alerts.length },
             { id: 'critical', label: 'Critical', count: alerts.filter(a => a.severity === 'high').length },
@@ -160,13 +160,13 @@ export function Alerts() {
               key={tab.id}
               onClick={() => setFilter(tab.id)}
               className={cn(
-                "relative py-4 text-xs font-bold transition-all flex items-center gap-2 shrink-0 border-b-2",
+                "relative py-3 sm:py-4 text-[10px] sm:text-xs font-bold transition-all flex items-center gap-2 shrink-0 border-b-2",
                 filter === tab.id ? "text-slate-900 border-blue-500" : "text-slate-400 border-transparent hover:text-slate-600"
               )}
             >
               {tab.label}
               <span className={cn(
-                 "px-2 py-0.5 rounded-full text-[10px] scale-90",
+                 "px-1.5 sm:px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] scale-90 sm:scale-100",
                  filter === tab.id ? "bg-blue-50 text-blue-600" : "bg-slate-100 text-slate-400"
               )}>
                 {tab.count}

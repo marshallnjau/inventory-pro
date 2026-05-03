@@ -4,7 +4,7 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
   PieChart, Pie, Cell
 } from 'recharts';
-import { cn } from '../../lib/utils';
+import { cn, formatCompactNumber } from '../../lib/utils';
 import { TrendingUp, DollarSign, Package, BarChart3, Calendar, RotateCcw, FileDown, Activity, MousePointer2, Clock, Ban } from 'lucide-react';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
@@ -123,62 +123,62 @@ export function Analytics() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 text-left">
         <div>
-          <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">Analytics</h2>
-          <p className="text-slate-500 text-sm font-medium mt-1">Deep insights into inventory performance</p>
+          <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">Analytics</h2>
+          <p className="text-slate-500 text-[11px] sm:text-sm font-medium mt-1">Deep insights into inventory performance</p>
         </div>
-        <div className="flex items-center gap-2">
-          <button className="flex items-center gap-2 px-4 h-10 border border-slate-200 rounded-lg bg-white text-slate-700 font-bold hover:bg-slate-50 transition-all text-xs">
-            <Calendar className="w-4 h-4" />
-            Last 30 Days <ChevronDown className="w-3 h-3 text-slate-400" />
+        <div className="flex flex-wrap items-center gap-2">
+          <button className="flex items-center gap-2 px-3 sm:px-4 h-9 sm:h-10 border border-slate-200 rounded-lg bg-white text-slate-700 font-bold hover:bg-slate-50 transition-all text-[10px] sm:text-xs shrink-0">
+            <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400" />
+            <span className="truncate">Last 30 Days</span> <ChevronDown className="w-3 h-3 text-slate-400" />
           </button>
-          <button className="flex items-center gap-2 px-4 h-10 border border-slate-200 rounded-lg bg-white text-slate-700 font-bold hover:bg-slate-50 transition-all text-xs">
-            <RotateCcw className="w-4 h-4" />
-            Refresh
+          <button className="flex items-center gap-2 px-3 sm:px-4 h-9 sm:h-10 border border-slate-200 rounded-lg bg-white text-slate-700 font-bold hover:bg-slate-50 transition-all text-[10px] sm:text-xs shrink-0">
+            <RotateCcw className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400" />
+            <span className="truncate">Refresh</span>
           </button>
-          <button className="flex items-center gap-2 bg-[#0f172a] text-white px-5 h-10 rounded-lg font-bold hover:bg-slate-800 transition-all text-xs">
-            <FileDown className="w-4 h-4" />
-            Export Report
+          <button className="flex items-center gap-2 bg-[#0f172a] text-white px-3 sm:px-5 h-9 sm:h-10 rounded-lg font-bold hover:bg-slate-800 transition-all text-[10px] sm:text-xs shrink-0">
+            <FileDown className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            <span className="truncate">Export Report</span>
           </button>
         </div>
       </div>
 
       {/* Mini Stat Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-        <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3 sm:gap-4">
-          <div className="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center">
-            <TrendingUp className="w-6 h-6 text-emerald-500" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
+        <div className="bg-white p-3 sm:p-4 md:p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-2 sm:gap-4">
+          <div className="w-8 h-8 sm:w-12 sm:h-12 bg-emerald-50 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0">
+            <TrendingUp className="w-4 h-4 sm:w-6 sm:h-6 text-emerald-500" />
           </div>
-          <div className="text-left">
-            <p className="text-base sm:text-lg font-bold text-slate-900 leading-none">4.2x</p>
-            <p className="text-[10px] sm:text-xs font-medium text-slate-400 mt-1 sm:mt-1.5">Avg Turnover</p>
+          <div className="text-left min-w-0">
+            <p className="text-xs sm:text-base md:text-lg font-bold text-slate-900 leading-none truncate">4.2x</p>
+            <p className="text-[8px] sm:text-[10px] md:text-xs font-medium text-slate-400 mt-0.5 sm:mt-1.5 leading-tight truncate">Avg Turnover</p>
           </div>
         </div>
         {/* Total Inventory */}
-        <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3 sm:gap-4">
-          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-slate-900 rounded-xl flex items-center justify-center text-white shrink-0">
-            <DollarSign className="w-5 h-5 sm:w-6 sm:h-6" />
+        <div className="bg-white p-3 sm:p-4 md:p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-2 sm:gap-4">
+          <div className="w-8 h-8 sm:w-12 sm:h-12 bg-slate-900 rounded-lg sm:rounded-xl flex items-center justify-center text-white shrink-0">
+            <DollarSign className="w-4 h-4 sm:w-6 sm:h-6" />
           </div>
-          <div className="text-left">
-            <p className="text-base sm:text-lg font-bold text-slate-900 leading-none">{currency}{(totalCapital / 1000).toFixed(0)}K</p>
-            <p className="text-[10px] sm:text-xs font-medium text-slate-400 mt-1 sm:mt-1.5">Total Inventory</p>
-          </div>
-        </div>
-        <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3 sm:gap-4">
-          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-emerald-500 rounded-xl flex items-center justify-center text-white shrink-0">
-            <Package className="w-5 h-5 sm:w-6 sm:h-6" />
-          </div>
-          <div className="text-left">
-            <p className="text-base sm:text-lg font-bold text-slate-900 leading-none">{totalSKUs.toLocaleString()}</p>
-            <p className="text-[10px] sm:text-xs font-medium text-slate-400 mt-1 sm:mt-1.5">Active SKUs</p>
+          <div className="text-left min-w-0">
+            <p className="text-xs sm:text-base md:text-lg font-bold text-slate-900 leading-none truncate">{formatCompactNumber(totalCapital, currency)}</p>
+            <p className="text-[8px] sm:text-[10px] md:text-xs font-medium text-slate-400 mt-0.5 sm:mt-1.5 leading-tight truncate">Total Value</p>
           </div>
         </div>
-        <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3 sm:gap-4 text-left">
-          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-amber-100 rounded-xl flex items-center justify-center shrink-0">
-            <BarChart3 className="w-5 h-5 sm:w-6 sm:h-6 text-amber-500" />
+        <div className="bg-white p-3 sm:p-4 md:p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-2 sm:gap-4">
+          <div className="w-8 h-8 sm:w-12 sm:h-12 bg-emerald-500 rounded-lg sm:rounded-xl flex items-center justify-center text-white shrink-0">
+            <Package className="w-4 h-4 sm:w-6 sm:h-6" />
           </div>
-          <div className="text-left">
-            <p className="text-base sm:text-lg font-bold text-slate-900 leading-none">87%</p>
-            <p className="text-[10px] sm:text-xs font-medium text-slate-400 mt-1 sm:mt-1.5">Fill Rate</p>
+          <div className="text-left min-w-0">
+            <p className="text-xs sm:text-base md:text-lg font-bold text-slate-900 leading-none truncate">{totalSKUs.toLocaleString()}</p>
+            <p className="text-[8px] sm:text-[10px] md:text-xs font-medium text-slate-400 mt-0.5 sm:mt-1.5 leading-tight truncate">Active SKUs</p>
+          </div>
+        </div>
+        <div className="bg-white p-3 sm:p-4 md:p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-2 sm:gap-4 text-left">
+          <div className="w-8 h-8 sm:w-12 sm:h-12 bg-amber-100 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0">
+            <BarChart3 className="w-4 h-4 sm:w-6 sm:h-6 text-amber-500" />
+          </div>
+          <div className="text-left min-w-0">
+            <p className="text-xs sm:text-base md:text-lg font-bold text-slate-900 leading-none truncate">87%</p>
+            <p className="text-[8px] sm:text-[10px] md:text-xs font-medium text-slate-400 mt-0.5 sm:mt-1.5 leading-tight truncate">Fill Rate</p>
           </div>
         </div>
       </div>
@@ -283,9 +283,12 @@ export function Analytics() {
               <h3 className="text-xl font-black text-slate-900 tracking-tight">Stock Movement Analysis</h3>
               <p className="text-xs font-semibold text-slate-500 mt-1">Inventory categorized by sales velocity</p>
             </div>
-            <div className="bg-slate-50 px-5 py-3 rounded-2xl border border-slate-100 min-w-[200px]">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Inventory Value</p>
-              <p className="text-xl font-black text-slate-900">{currency}{totalCapital.toLocaleString()}</p>
+            <div className="bg-slate-50 px-4 sm:px-5 py-2 sm:py-3 rounded-2xl border border-slate-100 sm:min-w-[200px]">
+              <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Inventory Value</p>
+              <p className="text-lg sm:text-xl font-black text-slate-900">
+                <span className="sm:hidden">{formatCompactNumber(totalCapital, currency)}</span>
+                <span className="hidden sm:inline">{currency}{totalCapital.toLocaleString()}</span>
+              </p>
             </div>
           </div>
           
@@ -301,24 +304,24 @@ export function Analytics() {
             ))}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
             {MOVEMENT_DATA.map((item, i) => (
               <motion.div 
                 key={i} 
                 whileHover={{ y: -4 }}
-                className="p-5 bg-slate-50/50 border border-slate-100 rounded-2xl flex flex-col justify-between hover:bg-white hover:border-slate-200 hover:shadow-md transition-all duration-300 relative overflow-hidden"
+                className="p-4 sm:p-5 bg-slate-50/50 border border-slate-100 rounded-2xl flex flex-col justify-between hover:bg-white hover:border-slate-200 hover:shadow-md transition-all duration-300 relative overflow-hidden"
               >
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4">
                   <div className="flex items-center justify-between">
-                    <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-sm", item.color)}>
-                      <item.icon className="w-5 h-5" />
+                    <div className={cn("w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center text-white shadow-sm", item.color)}>
+                      <item.icon className="w-4 h-4 sm:w-5 sm:h-5" />
                     </div>
                   </div>
                   
                   <div>
-                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1">{item.name}</p>
-                    <h4 className="text-lg font-black text-slate-900 leading-none">
-                      {currency}{item.value.toLocaleString()}
+                    <p className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1">{item.name}</p>
+                    <h4 className="text-sm sm:text-base font-black text-slate-900 leading-none">
+                      {formatCompactNumber(item.value, currency)}
                     </h4>
                   </div>
 
@@ -427,27 +430,27 @@ export function Analytics() {
         </div>
 
         {/* ABC-XYZ Combination Matrix */}
-        <div className="lg:col-span-3 bg-[#0f172a] p-8 rounded-3xl border border-slate-800 shadow-2xl text-left relative overflow-hidden">
+        <div className="lg:col-span-3 bg-[#0f172a] p-6 sm:p-8 rounded-3xl border border-slate-800 shadow-2xl text-left relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 blur-[100px] pointer-events-none" />
-          <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-12 items-center text-left">
-            <div>
-              <h3 className="text-xl font-black text-white">ABC/XYZ Efficiency Matrix</h3>
-              <p className="text-slate-400 text-sm mt-2 max-w-sm">The intersection of value (ABC) and predictability (XYZ) defines your core procurement strategy.</p>
+          <div className="relative z-10 flex flex-col md:flex-row gap-8 lg:gap-12 items-center text-left">
+            <div className="flex-1">
+              <h3 className="text-lg sm:text-xl font-black text-white">ABC/XYZ Efficiency Matrix</h3>
+              <p className="text-slate-400 text-xs sm:text-sm mt-2 max-w-sm">The intersection of value (ABC) and predictability (XYZ) defines your strategy.</p>
               
-              <div className="mt-8 space-y-4">
+              <div className="mt-6 sm:mt-8 space-y-3 sm:space-y-4">
                 <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
                    <div className="flex items-center gap-2 mb-1">
-                      <div className="w-2 h-2 rounded-full bg-emerald-400" />
-                      <span className="text-xs font-black text-white uppercase tracking-wider">AX Items: The Gold Standard</span>
+                      <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-400" />
+                      <span className="text-[10px] sm:text-xs font-black text-white uppercase tracking-wider">AX Items</span>
                    </div>
-                   <p className="text-[11px] text-slate-400">High value items with constant demand. Focus on JIT (Just-in-Time) delivery and high-frequency replenishment.</p>
+                   <p className="text-[10px] sm:text-[11px] text-slate-400">High value, steady demand. Use Just-in-Time delivery.</p>
                 </div>
                 <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
                    <div className="flex items-center gap-2 mb-1">
-                      <div className="w-2 h-2 rounded-full bg-pink-500" />
-                      <span className="text-xs font-black text-white uppercase tracking-wider">CZ Items: The Tail End</span>
+                      <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-pink-500" />
+                      <span className="text-[10px] sm:text-xs font-black text-white uppercase tracking-wider">CZ Items</span>
                    </div>
-                   <p className="text-[11px] text-slate-400">Low value, irregular demand items. Use bulk ordering or manual review to minimize handling costs.</p>
+                   <p className="text-[10px] sm:text-[11px] text-slate-400">Low value, irregular demand. Use bulk ordering.</p>
                 </div>
               </div>
             </div>

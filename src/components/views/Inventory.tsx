@@ -7,7 +7,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useSettings } from '../../contexts/SettingsContext';
 import { MOCK_PRODUCTS } from '../../constants';
 import { seedSampleData } from '../../services/sampleDataService';
-import { cn } from '../../lib/utils';
+import { cn, formatCompactNumber } from '../../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { MovementSpeed, Product } from '../../types';
 
@@ -94,7 +94,7 @@ export function Inventory() {
       skipEmptyLines: true,
       complete: async (results) => {
         try {
-          const results_data = results.data as any[];
+          const results_data = (results.data || []) as any[];
           for (const item of results_data) {
             const id = `prod_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
             const productData: Partial<Product> = {
@@ -113,7 +113,7 @@ export function Inventory() {
             };
             await setDoc(doc(db, `companies/${profile.companyId}/products`, id), productData);
           }
-          alert(`Successfully imported ${results_data.length} products.`);
+          alert(`Successfully imported ${results_data?.length || 0} products.`);
         } catch (error) {
           console.error("Import failed:", error);
           alert("Import failed. Please check your CSV format.");
@@ -662,61 +662,61 @@ export function Inventory() {
                  </div>
               </div>
 
-              {/* Mobile Card */}
-              <div className="lg:hidden p-5 flex flex-col gap-4 bg-white border-b border-slate-100 text-left">
-                 <div className="flex items-start gap-4">
-                    <div className="w-14 h-14 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400 border border-slate-100">
-                       <Package className="w-7 h-7" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                       <div className="flex items-start justify-between">
-                          <p className="font-bold text-slate-900 truncate leading-tight">{product.name}</p>
-                          <div className="flex items-center gap-2">
-                             <div className="relative">
-                               <select 
-                                 className={cn(
-                                   "px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-widest border shrink-0 appearance-none bg-white",
-                                   product.xyzClassification ? xyzStyles[product.xyzClassification] : "bg-slate-50 text-slate-400 border-slate-100"
-                                 )}
-                                 value={product.xyzClassification || ''}
-                                 onChange={(e) => handleUpdateXYZ(product.id, e.target.value)}
-                               >
-                                  <option value="" disabled>XYZ</option>
-                                  <option value="X">X</option>
-                                  <option value="Y">Y</option>
-                                  <option value="Z">Z</option>
-                               </select>
-                             </div>
-                             <span className={cn(
-                               "px-2 py-0.5 rounded-lg text-[8px] font-bold uppercase tracking-widest border shrink-0",
-                               movementStyles[product.movement]
-                             )}>
-                               {product.movement}
-                             </span>
-                          </div>
-                       </div>
-                       <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest">{product.sku} • {product.category}</p>
-                       
-                       <div className="flex items-center gap-6 mt-4">
-                          <div className="flex flex-col">
-                             <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">In Stock</span>
-                             <span className={cn("text-base font-extrabold", product.quantity < 50 ? "text-rose-500" : "text-slate-900")}>
-                               {product.quantity.toLocaleString()}
-                             </span>
-                          </div>
-                          <div className="w-px h-6 bg-slate-100" />
-                          <div className="flex flex-col">
-                             <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Valuation</span>
-                             <span className="text-base font-extrabold text-slate-900">{currency} {product.value.toLocaleString()}</span>
-                          </div>
-                       </div>
-                    </div>
-                 </div>
-                 <div className="flex items-center justify-between pt-2">
-                    <span className="text-[10px] font-medium text-slate-400 italic">Recorded: {product.lastSold}</span>
-                    <button className="text-[9px] font-bold text-blue-600 uppercase tracking-widest px-4 py-2 bg-blue-50 rounded-lg border border-blue-100">View Details</button>
-                 </div>
-              </div>
+                  {/* Mobile Card */}
+                  <div className="lg:hidden p-5 flex flex-col gap-4 bg-white border-b border-slate-100 text-left">
+                     <div className="flex items-start gap-4">
+                        <div className="w-12 h-12 flex-shrink-0 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400 border border-slate-100">
+                           <Package className="w-6 h-6" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                           <div className="flex items-start justify-between">
+                              <p className="font-bold text-slate-900 truncate leading-tight pr-2">{product.name}</p>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                 <div className="relative">
+                                   <select 
+                                     className={cn(
+                                       "px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-widest border shrink-0 appearance-none bg-white",
+                                       product.xyzClassification ? xyzStyles[product.xyzClassification] : "bg-slate-50 text-slate-400 border-slate-100"
+                                     )}
+                                     value={product.xyzClassification || ''}
+                                     onChange={(e) => handleUpdateXYZ(product.id, e.target.value)}
+                                   >
+                                      <option value="" disabled>XYZ</option>
+                                      <option value="X">X</option>
+                                      <option value="Y">Y</option>
+                                      <option value="Z">Z</option>
+                                   </select>
+                                 </div>
+                                 <span className={cn(
+                                   "px-2 py-0.5 rounded-lg text-[8px] font-bold uppercase tracking-widest border shrink-0",
+                                   movementStyles[product.movement]
+                                 )}>
+                                   {product.movement}
+                                 </span>
+                              </div>
+                           </div>
+                           <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest truncate">{product.sku} • {product.category}</p>
+                           
+                           <div className="flex items-center gap-6 mt-4">
+                              <div className="flex flex-col">
+                                 <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">In Stock</span>
+                                 <span className={cn("text-sm font-extrabold", product.quantity < 50 ? "text-rose-500" : "text-slate-900")}>
+                                   {product.quantity.toLocaleString()}
+                                 </span>
+                              </div>
+                              <div className="w-px h-6 bg-slate-100" />
+                              <div className="flex flex-col">
+                                 <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Valuation</span>
+                                 <span className="text-sm font-extrabold text-slate-900">{formatCompactNumber(product.value, currency)}</span>
+                              </div>
+                           </div>
+                        </div>
+                     </div>
+                     <div className="flex items-center justify-between pt-2">
+                        <span className="text-[10px] font-medium text-slate-400 italic">Recorded: {product.lastSold}</span>
+                        <button className="text-[9px] font-bold text-blue-600 uppercase tracking-widest px-4 py-2 bg-blue-50 rounded-lg border border-blue-100 transition-colors active:bg-blue-100">View Details</button>
+                     </div>
+                  </div>
             </React.Fragment>
           ))}
           {products.length === 0 && !loading && (

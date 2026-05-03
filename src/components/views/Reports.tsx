@@ -51,12 +51,14 @@ export function Reports() {
         ))}
       </div>
 
-      {/* Saved Reports Table */}
+      {/* Saved Reports */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden text-left">
         <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
            <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Saved Reports</h3>
         </div>
-        <div className="overflow-x-auto">
+        
+        {/* Desktop Table */}
+        <div className="hidden lg:block overflow-x-auto">
           <table className="w-full text-left">
             <thead>
               <tr className="bg-slate-50/50 border-b border-slate-100">
@@ -115,6 +117,62 @@ export function Reports() {
               ))}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile View */}
+        <div className="lg:hidden divide-y divide-slate-100">
+          {SAVED_REPORTS.map((report, i) => (
+            <div key={i} className="p-4 bg-white hover:bg-slate-50 transition-colors">
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 shrink-0">
+                    {report.type === 'Analytics' ? <BarChart3 className="w-4.5 h-4.5" /> : 
+                     report.type === 'Financial' ? <DollarSign className="w-4.5 h-4.5" /> : 
+                     <FileText className="w-4.5 h-4.5" />}
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-900 leading-tight pr-10">{report.name}</h4>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-[10px] font-medium text-slate-400">{report.type}</span>
+                      <span className="w-1 h-1 bg-slate-200 rounded-full" />
+                      <span className="text-[9px] font-black py-0.5 rounded text-slate-400 uppercase tracking-widest">
+                        {report.format}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <span className={cn(
+                  "px-2 py-0.5 rounded-full text-[9px] font-bold tracking-tight whitespace-nowrap",
+                  report.status === 'Ready' ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"
+                )}>
+                  {report.status}
+                </span>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-3 h-3 text-slate-300" />
+                  <span className="text-[10px] font-bold text-slate-500">{report.schedule}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Clock className="w-3 h-3 text-slate-300" />
+                  <span className="text-[10px] font-bold text-slate-400">{report.lastRun}</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <button className="flex-1 h-9 rounded-lg border border-slate-200 text-slate-600 font-bold text-[10px] uppercase tracking-widest flex items-center justify-center gap-1.5 hover:bg-slate-50 transition-all">
+                  <Play className="w-3 h-3" /> Run
+                </button>
+                <button className="flex-1 h-9 rounded-lg border border-slate-200 text-slate-600 font-bold text-[10px] uppercase tracking-widest flex items-center justify-center gap-1.5 hover:bg-slate-50 transition-all">
+                  <Eye className="w-3 h-3" /> View
+                </button>
+                <button className="p-2 border border-slate-200 rounded-lg text-rose-500 hover:bg-rose-50 transition-all">
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>

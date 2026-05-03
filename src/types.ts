@@ -51,6 +51,54 @@ export interface CategoryStats {
   color: string;
 }
 
+export interface POItem {
+  productId: string;
+  quantity: number;
+  unitPrice: number;
+  receivedQuantity: number;
+}
+
+export type POStatus = 'DRAFT' | 'PENDING' | 'APPROVED' | 'SHIPPED' | 'RECEIVED' | 'CANCELLED';
+
+export interface PurchaseOrder {
+  id: string;
+  poNumber: string;
+  supplierId: string;
+  date: string;
+  totalAmount: number;
+  status: POStatus;
+  items: POItem[];
+  notes?: string;
+}
+
+export interface GRNItem {
+  productId: string;
+  orderedQuantity: number;
+  receivedQuantity: number;
+}
+
+export interface GoodReceiptNote {
+  id: string;
+  grnNumber: string;
+  poId: string;
+  receivedDate: string;
+  receivedBy: string;
+  supplierId: string;
+  items: GRNItem[];
+  notes?: string;
+}
+
+export interface MROIssue {
+  id: string;
+  issueNumber: string;
+  productId: string;
+  quantity: number;
+  issuedTo: string;
+  department?: string;
+  date: string;
+  notes?: string;
+}
+
 export type ViewType = 
   | 'pos' | 'dashboard' | 'inventory' | 'categories' | 'analytics' | 'settings' 
   | 'invoices' | 'receipts' | 'delivery_notes' | 'credit_notes' 
