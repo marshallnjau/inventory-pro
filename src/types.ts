@@ -1,6 +1,4 @@
-export type MovementSpeed = 'fast' | 'moderate' | 'slow' | 'obsolete' | 'mro';
-
-export type XYZClassification = 'X' | 'Y' | 'Z';
+export type MovementSpeed = 'fast' | 'moderate' | 'slow' | 'obsolete';
 
 export interface Product {
   id: string;
@@ -9,14 +7,16 @@ export interface Product {
   categoryId?: string;
   category?: string; // Legacy/Display
   warehouseId?: string;
-  usage: 'SALE' | 'MRO';
   quantity: number;
   value: number;
   movement: MovementSpeed;
-  xyzClassification?: XYZClassification;
   status?: string;
   lastSold: string;
   image?: string;
+  expiryDate?: string; // Expiration Tracking Date
+  manufactureDate?: string;
+  batchNumber?: string;
+  expiryStatus?: 'Fresh' | 'Near Expiry' | 'Expired';
   createdAt: string;
   updatedAt: string;
 }
@@ -102,7 +102,7 @@ export interface MROIssue {
 export type ViewType = 
   | 'pos' | 'dashboard' | 'inventory' | 'categories' | 'analytics' | 'settings' 
   | 'invoices' | 'receipts' | 'delivery_notes' | 'credit_notes' | 'quotations' | 'proforma'
-  | 'warehouses' | 'supplier' | 'reports' | 'warranties' | 'alerts'
+  | 'warehouses' | 'supplier' | 'reports' | 'warranties' | 'alerts' | 'expiry_tracking'
   | 'purchase_orders' | 'grn' | 'mro_issues' | 'procurement_hub'
   | 'bom' | 'production_orders'
   | 'customers' | 'suppliers'

@@ -32,12 +32,12 @@ export async function seedSampleData(userId: string, companyId: string) {
       });
     }
 
-    // 1b. Seed some MRO products
-    const mroProducts = [
-      { name: 'Industrial Lubricant', sku: 'MRO-LUB-001', category: 'Consumables', value: 45, quantity: 100, minStock: 20, usage: 'MRO', movement: 'mro', xyzClassification: 'X' },
-      { name: 'Safety Gloves', sku: 'MRO-PPE-001', category: 'PPE', value: 12, quantity: 200, minStock: 50, usage: 'MRO', movement: 'mro', xyzClassification: 'Y' },
+    // 1b. Seed some more products
+    const extraProducts = [
+      { name: 'Industrial Lubricant', sku: 'MRO-LUB-001', category: 'Consumables', value: 45, quantity: 100, minStock: 20, movement: 'moderate' },
+      { name: 'Safety Gloves', sku: 'MRO-PPE-001', category: 'PPE', value: 12, quantity: 200, minStock: 50, movement: 'slow' },
     ];
-    for (const prod of mroProducts) {
+    for (const prod of extraProducts) {
       const prodRef = doc(collection(db, `companies/${companyId}/products`));
       batch.set(prodRef, {
         ...prod,

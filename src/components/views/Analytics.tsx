@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { TURNOVER_DATA, MOCK_PRODUCTS } from '../../constants';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
-  PieChart, Pie, Cell
+  PieChart, Pie, Cell, BarChart, Bar, LineChart, Line, ScatterChart, Scatter, ZAxis, Legend
 } from 'recharts';
 import { cn, formatCompactNumber } from '../../lib/utils';
 import { TrendingUp, DollarSign, Package, BarChart3, Calendar, RotateCcw, FileDown, Activity, MousePointer2, Clock, Ban } from 'lucide-react';
@@ -24,7 +24,7 @@ export function Analytics() {
     if (!profile?.companyId) return;
     const q = collection(db, `companies/${profile.companyId}/products`);
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      setProducts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      setProducts(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })));
       setLoading(false);
     }, (error) => {
       console.error("Query error in Analytics:", error);
@@ -62,7 +62,6 @@ export function Analytics() {
 
   const movementDataMap = allProducts.reduce((acc, p) => {
     let key = p.movement || 'slow';
-    if (p.usage === 'MRO') key = 'mro';
     
     if (!acc[key]) acc[key] = { value: 0, items: 0 };
     acc[key].value += p.value * p.quantity;
@@ -75,7 +74,6 @@ export function Analytics() {
     { name: 'Moderate', key: 'moderate', color: 'bg-emerald-500', icon: Activity, desc: 'Steady sales, monitor trends' },
     { name: 'Slow Moving', key: 'slow', color: 'bg-amber-500', icon: Clock, desc: 'Consider discounts' },
     { name: 'Obsolete', key: 'obsolete', color: 'bg-rose-500', icon: Ban, desc: 'Liquidate or clear' },
-    { name: 'MRO', key: 'mro', color: 'bg-slate-500', icon: MousePointer2, desc: 'Maintenance, repair & operations' },
   ].map(m => {
     const data = movementDataMap[m.key] || { value: 0, items: 0 };
     return {
@@ -88,6 +86,16 @@ export function Analytics() {
 
   // ABC Analysis (70/20/10 rule simulation based on value density)
   const sortedByValue = [...allProducts].sort((a, b) => (b.value * b.quantity) - (a.value * a.quantity));
+  
+  // Scatter Data: Price vs Quantity
+  const scatterData = allProducts.map(p => ({
+    name: p.name,
+    quantity: p.quantity,
+    price: p.value,
+    totalValue: p.value * p.quantity,
+    category: p.category
+  })).slice(0, 50); // Top 50 to avoid clutter
+
   let cumulativeValue = 0;
   const abcAnalysis = [
     { class: 'A', limit: 0.7, items: [] as any[], val: 0, color: 'bg-emerald-500', desc: 'High-value items requiring tight control.' },
@@ -110,13 +118,6 @@ export function Analytics() {
       abcAnalysis[2].val += pVal;
     }
   });
-
-  // XYZ Analysis
-  const xyzCounts = products.reduce((acc, p) => {
-    const key = p.xyzClassification || 'Y';
-    acc[key] = (acc[key] || 0) + 1;
-    return acc;
-  }, {} as any);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-20">
@@ -183,22 +184,16 @@ export function Analytics() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Turnover Trend */}
-        <div className="lg:col-span-2 bg-white p-6 md:p-8 rounded-2xl border border-slate-200 shadow-sm text-left">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Line Chart: Turnover Trend */}
+        <div className="bg-white p-6 md:p-8 rounded-2xl border border-slate-200 shadow-sm text-left">
           <div className="mb-0">
             <h3 className="text-lg font-extrabold text-slate-900">Stock Turnover Trend</h3>
-            <p className="text-xs font-medium text-slate-400 mt-0.5">Monthly inventory turnover ratio</p>
+            <p className="text-xs font-medium text-slate-400 mt-0.5">Monthly turnover ratio (Line Chart)</p>
           </div>
-          <div className="h-[280px] w-full mt-4">
+          <div className="h-[320px] w-full mt-6">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={TURNOVER_DATA}>
-                <defs>
-                  <linearGradient id="colorTrend" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.1}/>
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
+              <LineChart data={TURNOVER_DATA}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis 
                   dataKey="name" 
@@ -218,17 +213,18 @@ export function Analytics() {
                   contentStyle={{ backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} 
                   labelStyle={{ fontWeight: 800, color: '#0f172a', marginBottom: '4px' }}
                 />
-                <Area type="monotone" dataKey="turnover" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorTrend)" />
-              </AreaChart>
+                <Legend iconType="circle" />
+                <Line type="monotone" dataKey="turnover" name="Turnover Rate" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4, fill: '#3b82f6' }} activeDot={{ r: 6 }} />
+              </LineChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        {/* Cash Tied by Category */}
+        {/* Pie Chart: Cash Tied by Category */}
         <div className="bg-white p-6 md:p-8 rounded-2xl border border-slate-200 shadow-sm flex flex-col text-left">
           <div className="mb-6">
-            <h3 className="text-xl font-extrabold text-slate-900">Cash Tied by Category</h3>
-            <p className="text-xs font-medium text-slate-400 mt-0.5">Distribution of inventory value</p>
+            <h3 className="text-xl font-extrabold text-slate-900">Category Distribution</h3>
+            <p className="text-xs font-medium text-slate-400 mt-0.5">Inventory value share (Pie Chart)</p>
           </div>
           <div className="flex-1 flex flex-col sm:flex-row items-center sm:justify-between gap-8 py-2">
             <div className="relative w-44 h-44 shrink-0">
@@ -246,10 +242,14 @@ export function Analytics() {
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
+                  <Tooltip 
+                    formatter={(value: number) => [`${currency}${value.toLocaleString()}`, 'Value']}
+                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                  />
                 </PieChart>
               </ResponsiveContainer>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <p className="text-[12px] font-medium text-slate-400 tracking-tight">Total</p>
+                <p className="text-[10px] font-bold text-slate-400 tracking-widest uppercase">Value</p>
                 <p className="text-xl font-black text-slate-900 leading-none mt-1">
                   {currency}{totalCapital >= 1000000 
                     ? `${(totalCapital / 1000000).toFixed(1)}M` 
@@ -258,26 +258,139 @@ export function Analytics() {
               </div>
             </div>
             <div className="flex-1 w-full space-y-3 min-w-[200px]">
-              {categoryStats.slice(0, 7).map((cat) => (
+              {categoryStats.slice(0, 5).map((cat) => (
                 <div key={cat.id} className="flex items-center justify-between group">
-                  <div className="flex items-center gap-3">
-                    <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: cat.color }} />
-                    <span className="text-sm font-medium text-slate-500 group-hover:text-slate-900 transition-colors uppercase tracking-tight">{cat.name}</span>
+                  <div className="flex items-center gap-3 text-left">
+                    <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: cat.color }} />
+                    <span className="text-[11px] font-bold text-slate-500 group-hover:text-slate-900 transition-colors uppercase tracking-tight truncate max-w-[100px]">{cat.name}</span>
                   </div>
-                  <span className="text-sm font-black text-slate-900">{currency}{cat.value.toLocaleString()}</span>
+                  <span className="text-[11px] font-black text-slate-900">{currency}{formatCompactNumber(cat.value, currency)}</span>
                 </div>
               ))}
-              {categoryStats.length > 7 && (
-                <p className="text-[10px] text-center text-slate-400 font-bold uppercase tracking-widest pt-2">
-                  + {categoryStats.length - 7} more categories
-                </p>
-              )}
             </div>
           </div>
         </div>
 
-        {/* Stock Movement Analysis */}
-        <div className="lg:col-span-3 bg-white p-6 md:p-8 rounded-2xl border border-slate-200 shadow-sm space-y-8 text-left">
+        {/* Column Chart: Movement by Item Count */}
+        <div className="bg-white p-6 md:p-8 rounded-2xl border border-slate-200 shadow-sm text-left">
+          <div className="mb-6">
+            <h3 className="text-lg font-extrabold text-slate-900">Inventory Movement</h3>
+            <p className="text-xs font-medium text-slate-400 mt-0.5">Items per movement category (Column Chart)</p>
+          </div>
+          <div className="h-[300px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={MOVEMENT_DATA}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis 
+                  dataKey="name" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fontSize: 9, fontWeight: 700, fill: '#64748b' }}
+                />
+                <YAxis 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fontSize: 10, fontWeight: 700, fill: '#64748b' }}
+                />
+                <Tooltip 
+                  cursor={{ fill: '#f8fafc' }}
+                  contentStyle={{ backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}
+                />
+                <Bar dataKey="items" name="Total Units" radius={[6, 6, 0, 0]}>
+                  {MOVEMENT_DATA.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color.includes('blue') ? '#3b82f6' : entry.color.includes('emerald') ? '#10b981' : entry.color.includes('amber') ? '#f59e0b' : '#f43f5e'} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Horizontal Bar Chart: Value by Category */}
+        <div className="bg-white p-6 md:p-8 rounded-2xl border border-slate-200 shadow-sm text-left">
+          <div className="mb-6">
+            <h3 className="text-lg font-extrabold text-slate-900">Value Ranking</h3>
+            <p className="text-xs font-medium text-slate-400 mt-0.5">Top categories by total value (Bar Chart)</p>
+          </div>
+          <div className="h-[300px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart layout="vertical" data={categoryStats.slice(0, 6)} margin={{ left: 20 }}>
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
+                <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b' }} hide />
+                <YAxis 
+                  dataKey="name" 
+                  type="category" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fontSize: 11, fontWeight: 700, fill: '#475569' }} 
+                  width={80}
+                />
+                <Tooltip 
+                  cursor={{ fill: '#f8fafc' }}
+                  formatter={(val: number) => [`${currency}${val.toLocaleString()}`, 'Value']}
+                  contentStyle={{ borderRadius: '12px' }}
+                />
+                <Bar dataKey="value" fill="#6366f1" radius={[0, 6, 6, 0]} barSize={20} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Scatter Plot: Price vs Quantity Analysis */}
+        <div className="lg:col-span-2 bg-white p-6 md:p-8 rounded-2xl border border-slate-200 shadow-sm text-left">
+          <div className="mb-6">
+            <h3 className="text-lg font-extrabold text-slate-900">Price vs Quantity (Scatter Plot)</h3>
+            <p className="text-xs font-medium text-slate-400 mt-0.5">Identifying high-value outliers and stocking efficiency</p>
+          </div>
+          <div className="h-[350px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <ScatterChart margin={{ top: 20, right: 30, bottom: 20, left: 20 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <XAxis 
+                  type="number" 
+                  dataKey="quantity" 
+                  name="Stock Quantity" 
+                  axisLine={false} 
+                  tickLine={false}
+                  label={{ value: 'Quantity', position: 'insideBottom', offset: -10, fontSize: 10, fontWeight: 700 }}
+                />
+                <YAxis 
+                  type="number" 
+                  dataKey="price" 
+                  name="Unit Price" 
+                  axisLine={false} 
+                  tickLine={false}
+                  tickFormatter={(val) => `${currency}${val}`}
+                  label={{ value: 'Price', angle: -90, position: 'insideLeft', fontSize: 10, fontWeight: 700 }}
+                />
+                <ZAxis type="number" dataKey="totalValue" range={[64, 400]} name="Total Value" />
+                <Tooltip 
+                  cursor={{ strokeDasharray: '3 3' }} 
+                  content={({ payload }) => {
+                    if (payload && payload.length) {
+                      const data = payload[0].payload;
+                      return (
+                        <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-xl text-left">
+                          <p className="text-xs font-black text-slate-900 mb-2 truncate max-w-[200px]">{data.name}</p>
+                          <div className="space-y-1">
+                            <p className="text-[10px] font-bold text-slate-500">Price: <span className="text-slate-900">{currency}{data.price}</span></p>
+                            <p className="text-[10px] font-bold text-slate-500">Stock: <span className="text-slate-900">{data.quantity} units</span></p>
+                            <p className="text-[10px] font-bold text-slate-500">Value: <span className="text-blue-600">{currency}{data.totalValue.toLocaleString()}</span></p>
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  }}
+                />
+                <Scatter name="Products" data={scatterData} fill="#3b82f6" fillOpacity={0.6} />
+              </ScatterChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Existing Analysis Progress Visualizations */}
+        <div className="lg:col-span-2 bg-white p-6 md:p-8 rounded-2xl border border-slate-200 shadow-sm space-y-8 text-left">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h3 className="text-xl font-black text-slate-900 tracking-tight">Stock Movement Analysis</h3>
@@ -364,139 +477,6 @@ export function Analytics() {
                 </div>
               </div>
             ))}
-          </div>
-        </div>
-
-        {/* XYZ Analysis (Demand Analysis) */}
-        <div className="bg-white p-6 md:p-8 rounded-2xl border border-slate-200 shadow-sm text-left text-left">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h3 className="text-lg font-extrabold text-slate-900">XYZ (Demand) Analysis</h3>
-              <p className="text-xs font-medium text-slate-400 mt-0.5">Consumption-variance classification</p>
-            </div>
-            <div className="flex items-center gap-4">
-               <div className="flex flex-col items-center">
-                  <span className="text-lg font-black text-indigo-500">X</span>
-                  <span className="text-[8px] font-bold text-slate-400 uppercase">Steady</span>
-               </div>
-               <div className="flex flex-col items-center">
-                  <span className="text-lg font-black text-purple-500">Y</span>
-                  <span className="text-[8px] font-bold text-slate-400 uppercase">Var</span>
-               </div>
-               <div className="flex flex-col items-center">
-                  <span className="text-lg font-black text-pink-500">Z</span>
-                  <span className="text-[8px] font-bold text-slate-400 uppercase">Stoch</span>
-               </div>
-            </div>
-          </div>
-
-          <div className="space-y-6">
-            {[
-              { 
-                class: 'Class X', 
-                key: 'X',
-                desc: 'Constant consumption. High accuracy in forecasting.',
-                reliability: '95%',
-                color: 'bg-indigo-500'
-              },
-              { 
-                class: 'Class Y', 
-                key: 'Y',
-                desc: 'Varying demand (seasonal/trends). Medium accuracy.',
-                reliability: '75%',
-                color: 'bg-purple-500'
-              },
-              { 
-                class: 'Class Z', 
-                key: 'Z',
-                desc: 'Irregular/Stochastic demand. Difficult to forecast.',
-                reliability: '40%',
-                color: 'bg-pink-500'
-              },
-            ].map((item, i) => (
-              <div key={i} className="space-y-3 pb-6 border-b border-slate-50 last:border-0 last:pb-0">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className={cn("w-2 h-2 rounded-full", item.color)} />
-                    <span className="text-sm font-bold text-slate-900">{item.class}</span>
-                  </div>
-                  <span className="text-[10px] font-black text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded-full">{item.reliability} Accuracy</span>
-                </div>
-                <p className="text-[10px] text-slate-500 font-medium leading-relaxed">{item.desc}</p>
-                <p className="text-[10px] font-bold text-slate-400">Total Items: <span className="text-slate-900">{xyzCounts[item.key] || 0}</span></p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* ABC-XYZ Combination Matrix */}
-        <div className="lg:col-span-3 bg-[#0f172a] p-6 sm:p-8 rounded-3xl border border-slate-800 shadow-2xl text-left relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 blur-[100px] pointer-events-none" />
-          <div className="relative z-10 flex flex-col md:flex-row gap-8 lg:gap-12 items-center text-left">
-            <div className="flex-1">
-              <h3 className="text-lg sm:text-xl font-black text-white">ABC/XYZ Efficiency Matrix</h3>
-              <p className="text-slate-400 text-xs sm:text-sm mt-2 max-w-sm">The intersection of value (ABC) and predictability (XYZ) defines your strategy.</p>
-              
-              <div className="mt-6 sm:mt-8 space-y-3 sm:space-y-4">
-                <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
-                   <div className="flex items-center gap-2 mb-1">
-                      <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-400" />
-                      <span className="text-[10px] sm:text-xs font-black text-white uppercase tracking-wider">AX Items</span>
-                   </div>
-                   <p className="text-[10px] sm:text-[11px] text-slate-400">High value, steady demand. Use Just-in-Time delivery.</p>
-                </div>
-                <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
-                   <div className="flex items-center gap-2 mb-1">
-                      <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-pink-500" />
-                      <span className="text-[10px] sm:text-xs font-black text-white uppercase tracking-wider">CZ Items</span>
-                   </div>
-                   <p className="text-[10px] sm:text-[11px] text-slate-400">Low value, irregular demand. Use bulk ordering.</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-slate-800/50 p-2 rounded-2xl border border-slate-700/50">
-              <div className="grid grid-cols-4 gap-1 text-[10px] font-black text-slate-500 uppercase tracking-widest text-center mb-1">
-                 <div /> <div>X</div> <div>Y</div> <div>Z</div>
-              </div>
-              <div className="grid grid-cols-[30px_1fr_1fr_1fr] gap-1">
-                 {/* A Row */}
-                 <div className="flex items-center justify-center font-black text-slate-500">A</div>
-                 <div className="aspect-square bg-emerald-500/20 rounded-lg flex items-center justify-center border border-emerald-500/30 group hover:bg-emerald-500/40 transition-all cursor-help relative text-left">
-                    <span className="text-emerald-400 font-bold">AX</span>
-                 </div>
-                 <div className="aspect-square bg-emerald-500/10 rounded-lg flex items-center justify-center border border-emerald-500/20">
-                    <span className="text-emerald-400/60 font-bold">AY</span>
-                 </div>
-                 <div className="aspect-square bg-amber-500/10 rounded-lg flex items-center justify-center border border-amber-500/20">
-                    <span className="text-amber-400/60 font-bold">AZ</span>
-                 </div>
-
-                 {/* B Row */}
-                 <div className="flex items-center justify-center font-black text-slate-500">B</div>
-                 <div className="aspect-square bg-blue-500/10 rounded-lg flex items-center justify-center border border-blue-500/20">
-                    <span className="text-blue-400/60 font-bold">BX</span>
-                 </div>
-                 <div className="aspect-square bg-blue-500/10 rounded-lg flex items-center justify-center border border-blue-500/20">
-                    <span className="text-blue-400/60 font-bold">BY</span>
-                 </div>
-                 <div className="aspect-square bg-amber-500/10 rounded-lg flex items-center justify-center border border-amber-500/20">
-                    <span className="text-amber-400/60 font-bold">BZ</span>
-                 </div>
-
-                 {/* C Row */}
-                 <div className="flex items-center justify-center font-black text-slate-500">C</div>
-                 <div className="aspect-square bg-slate-500/10 rounded-lg flex items-center justify-center border border-slate-500/20">
-                    <span className="text-slate-400/60 font-bold">CX</span>
-                 </div>
-                 <div className="aspect-square bg-slate-500/10 rounded-lg flex items-center justify-center border border-slate-500/20">
-                    <span className="text-slate-400/60 font-bold">CY</span>
-                 </div>
-                 <div className="aspect-square bg-pink-500/20 rounded-lg flex items-center justify-center border border-pink-500/30">
-                    <span className="text-pink-400 font-bold">CZ</span>
-                 </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>

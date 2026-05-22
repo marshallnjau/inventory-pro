@@ -13,6 +13,7 @@ import { Help } from './components/views/Help';
 import { Settings as SettingsView } from './components/views/Settings';
 import { SupplierAnalytics } from './components/views/SupplierAnalytics';
 import { Reports } from './components/views/Reports';
+import { ExpiryTracking } from './components/views/ExpiryTracking';
 import { Warranties } from './components/views/Warranties';
 import { Alerts } from './components/views/Alerts';
 import { Customers } from './components/views/Customers';
@@ -211,6 +212,7 @@ function AppContent() {
       case 'warehouses': return <SettingsPlaceholder title="Warehouses Management" description="Monitor and configure your physical storage locations and zoning." icon={Warehouse} />;
       case 'supplier': return <SupplierAnalytics />;
       case 'reports': return <Reports />;
+      case 'expiry_tracking': return <ExpiryTracking />;
       case 'warranties': return <Warranties />;
       case 'alerts': return <Alerts />;
       case 'help': return <Help />;

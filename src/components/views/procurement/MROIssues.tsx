@@ -117,7 +117,7 @@ export function MROIssues() {
         {[
           { label: 'Total Issues', value: issues.length.toString(), color: 'text-slate-900' },
           { label: 'Value Consumed', value: `${currency}${totalValue.toLocaleString()}`, color: 'text-blue-600' },
-          { label: 'Inventory Lines', value: products.filter(p => p.usage === 'MRO').length.toString(), color: 'text-emerald-500' },
+          { label: 'Total Inventory Lines', value: products.length.toString(), color: 'text-emerald-500' },
         ].map((stat, i) => (
           <div key={i} className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm transition-all hover:shadow-md">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">{stat.label}</p>
@@ -207,18 +207,18 @@ export function MROIssues() {
               <div className="p-8 space-y-6">
                 <div className="text-left">
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 mb-1.5 block">Select Item</label>
-                  <select 
-                    required
-                    value={productId}
-                    onChange={(e) => setProductId(e.target.value)}
-                    className="w-full h-12 bg-slate-50 border border-slate-200 rounded-xl px-4 font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                  >
-                    <option value="">Select Consumable</option>
-                    {products.filter(p => p.usage === 'MRO').map(p => (
-                      <option key={p.id} value={p.id}>{p.name} (Stock: {p.quantity})</option>
-                    ))}
-                    {products.filter(p => p.usage === 'MRO').length === 0 && (
-                      <option disabled>No MRO items in inventory</option>
+                    <select 
+                      required
+                      value={productId}
+                      onChange={(e) => setProductId(e.target.value)}
+                      className="w-full h-12 bg-slate-50 border border-slate-200 rounded-xl px-4 font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                    >
+                      <option value="">Select Item</option>
+                      {products.map(p => (
+                        <option key={p.id} value={p.id}>{p.name} (Stock: {p.quantity})</option>
+                      ))}
+                      {products.length === 0 && (
+                      <option disabled>No items in inventory</option>
                     )}
                   </select>
                 </div>
