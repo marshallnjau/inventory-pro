@@ -39,6 +39,7 @@ import {
   LineChart,
   UserRound,
   Clock,
+  DollarSign,
 } from "lucide-react";
 import { ViewType, Product } from "../../types";
 import { cn } from "../../lib/utils";
@@ -138,6 +139,7 @@ const menuGroups = [
     icon: TrendingUp,
     children: [
       { id: "analytics" as ViewType, label: "Analytics", icon: BarChart3 },
+      { id: "profit_tracking" as ViewType, label: "Profit Tracking", icon: DollarSign },
       { id: "forecast" as ViewType, label: "Forecast", icon: LineChart },
       { id: "reports" as ViewType, label: "Reports", icon: FileText },
       { id: "warranties" as ViewType, label: "Warranties", icon: ShieldCheck },

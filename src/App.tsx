@@ -14,6 +14,7 @@ import { Settings as SettingsView } from './components/views/Settings';
 import { SupplierAnalytics } from './components/views/SupplierAnalytics';
 import { Reports } from './components/views/Reports';
 import { ExpiryTracking } from './components/views/ExpiryTracking';
+import { ProfitTracking } from './components/views/ProfitTracking';
 import { Warranties } from './components/views/Warranties';
 import { Alerts } from './components/views/Alerts';
 import { Customers } from './components/views/Customers';
@@ -213,6 +214,7 @@ function AppContent() {
       case 'supplier': return <SupplierAnalytics />;
       case 'reports': return <Reports />;
       case 'expiry_tracking': return <ExpiryTracking />;
+      case 'profit_tracking': return <ProfitTracking />;
       case 'warranties': return <Warranties />;
       case 'alerts': return <Alerts />;
       case 'help': return <Help />;
