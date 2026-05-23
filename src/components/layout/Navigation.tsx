@@ -139,6 +139,7 @@ const menuGroups = [
     icon: TrendingUp,
     children: [
       { id: "analytics" as ViewType, label: "Analytics", icon: BarChart3 },
+      { id: "spend_analysis" as ViewType, label: "Spend Analysis", icon: Layers },
       { id: "profit_tracking" as ViewType, label: "Profit Tracking", icon: DollarSign },
       { id: "forecast" as ViewType, label: "Forecast", icon: LineChart },
       { id: "reports" as ViewType, label: "Reports", icon: FileText },

@@ -102,7 +102,7 @@ export interface MROIssue {
 export type ViewType = 
   | 'pos' | 'dashboard' | 'inventory' | 'categories' | 'analytics' | 'settings' 
   | 'invoices' | 'receipts' | 'delivery_notes' | 'credit_notes' | 'quotations' | 'proforma'
-  | 'warehouses' | 'supplier' | 'reports' | 'warranties' | 'alerts' | 'expiry_tracking' | 'profit_tracking'
+  | 'warehouses' | 'supplier' | 'reports' | 'warranties' | 'alerts' | 'expiry_tracking' | 'profit_tracking' | 'spend_analysis'
   | 'purchase_orders' | 'grn' | 'mro_issues' | 'procurement_hub'
   | 'bom' | 'production_orders'
   | 'customers' | 'suppliers'

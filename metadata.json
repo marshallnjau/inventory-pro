@@ -2,5 +2,5 @@
   "name": "Invenio",
   "description": "A sophisticated, dark-themed inventory management system focusing on archival asset control and strategic movement analytics.",
   "requestFramePermissions": [],
-  "majorCapabilities": []
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

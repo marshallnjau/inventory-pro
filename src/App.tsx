@@ -15,6 +15,7 @@ import { SupplierAnalytics } from './components/views/SupplierAnalytics';
 import { Reports } from './components/views/Reports';
 import { ExpiryTracking } from './components/views/ExpiryTracking';
 import { ProfitTracking } from './components/views/ProfitTracking';
+import { SpendAnalysis } from './components/views/SpendAnalysis';
 import { Warranties } from './components/views/Warranties';
 import { Alerts } from './components/views/Alerts';
 import { Customers } from './components/views/Customers';
@@ -215,6 +216,7 @@ function AppContent() {
       case 'reports': return <Reports />;
       case 'expiry_tracking': return <ExpiryTracking />;
       case 'profit_tracking': return <ProfitTracking />;
+      case 'spend_analysis': return <SpendAnalysis />;
       case 'warranties': return <Warranties />;
       case 'alerts': return <Alerts />;
       case 'help': return <Help />;
