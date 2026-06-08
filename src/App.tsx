@@ -31,6 +31,7 @@ import { SalesHub } from './components/views/sales/SalesHub';
 import { Receipts } from './components/views/sales/Receipts';
 import { DeliveryNotes } from './components/views/sales/DeliveryNotes';
 import { CreditNotes } from './components/views/sales/CreditNotes';
+import { InventoryProChat, InventoryProFloatingWidget } from './components/views/InventoryProChat';
 import { ViewType } from './types';
 import { cn } from './lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
@@ -221,6 +222,7 @@ function AppContent() {
       case 'alerts': return <Alerts />;
       case 'help': return <Help />;
       case 'settings': return <SettingsView />;
+      case 'inventory_pro_chat': return <InventoryProChat />;
       default: return <Dashboard />;
     }
   };
@@ -259,6 +261,7 @@ function AppContent() {
       </div>
 
       <BottomNav currentView={currentView} onViewChange={setCurrentView} />
+      {currentView !== 'inventory_pro_chat' && <InventoryProFloatingWidget />}
     </div>
   );
 }

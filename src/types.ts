@@ -106,4 +106,4 @@ export type ViewType =
   | 'purchase_orders' | 'grn' | 'mro_issues' | 'procurement_hub'
   | 'bom' | 'production_orders'
   | 'customers' | 'suppliers'
-  | 'help';
+  | 'help' | 'inventory_pro_chat';

@@ -9,11 +9,27 @@ import { cn, formatCompactNumber } from '../../../lib/utils';
 import { ProcurementService } from '../../../lib/procurementService';
 import { PurchaseOrder, POItem, Product, POStatus } from '../../../types';
 import { motion } from 'motion/react';
+import { ConfirmationModal } from '../../ConfirmationModal';
 
 export function PurchaseOrders() {
   const { user } = useAuth();
   const { profile, settings } = useSettings();
   const currency = settings?.currency || 'KSh';
+
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmText?: string;
+    type?: "danger" | "warning" | "info" | "success";
+    onConfirm: () => void | Promise<void>;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {}
+  });
+
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [suppliers, setSuppliers] = useState<any[]>([]);
@@ -74,43 +90,63 @@ export function PurchaseOrders() {
     setItems(newItems);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!profile?.companyId || !supplierId || items.length === 0) return;
     
-    setSubmitting(true);
-    try {
-      const totalAmount = items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
-      const poNumber = `PO-${Math.floor(1000 + Math.random() * 9000)}`;
-      
-      await ProcurementService.createPurchaseOrder(profile.companyId, {
-        poNumber,
-        supplierId,
-        date: new Date().toISOString(),
-        totalAmount,
-        status: 'PENDING',
-        items,
-        notes
-      });
-      
-      setShowModal(false);
-      setSupplierId('');
-      setItems([]);
-      setNotes('');
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setSubmitting(false);
-    }
+    setConfirmConfig({
+      isOpen: true,
+      title: "Place Purchase Order",
+      message: "Are you sure you want to finalize and dispatch this purchase order to the selected supplier?",
+      confirmText: "Place Order",
+      type: "success",
+      onConfirm: async () => {
+        setSubmitting(true);
+        setConfirmConfig(prev => ({ ...prev, isOpen: false }));
+        try {
+          const totalAmount = items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+          const poNumber = `PO-${Math.floor(1000 + Math.random() * 9000)}`;
+          
+          await ProcurementService.createPurchaseOrder(profile.companyId, {
+            poNumber,
+            supplierId,
+            date: new Date().toISOString(),
+            totalAmount,
+            status: 'PENDING',
+            items,
+            notes
+          });
+          
+          setShowModal(false);
+          setSupplierId('');
+          setItems([]);
+          setNotes('');
+        } catch (error) {
+          console.error(error);
+        } finally {
+          setSubmitting(false);
+        }
+      }
+    });
   };
 
-  const handleApprove = async (poId: string) => {
-    if (!profile?.companyId) return;
-    try {
-      await ProcurementService.updatePOStatus(profile.companyId, poId, 'APPROVED');
-    } catch (error) {
-      console.error(error);
-    }
+  const handleApprove = (poId: string, poNumber: string) => {
+    setConfirmConfig({
+      isOpen: true,
+      title: "Approve Purchase Order",
+      message: `Are you sure you want to approve purchase order ${poNumber}? This will authorize stock intake and adjust procurement states.`,
+      confirmText: "Approve Order",
+      type: "success",
+      onConfirm: async () => {
+        if (!profile?.companyId) return;
+        setConfirmConfig(prev => ({ ...prev, isOpen: false }));
+        try {
+          await ProcurementService.updatePOStatus(profile.companyId, poId, 'APPROVED');
+        } catch (error) {
+          console.error(error);
+        }
+      }
+    });
   };
 
   if (loading) {
@@ -173,7 +209,7 @@ export function PurchaseOrders() {
                 <div className="flex items-center gap-2">
                    {po.status === 'PENDING' && (
                      <button 
-                       onClick={() => handleApprove(po.id)}
+                       onClick={() => handleApprove(po.id, po.poNumber)}
                        className="flex items-center gap-2 px-3 h-9 bg-emerald-600 text-white rounded-lg font-bold hover:bg-emerald-700 transition-all text-[10px] uppercase tracking-widest"
                      >
                        <CheckCircle2 className="w-3.5 h-3.5" />
@@ -311,6 +347,15 @@ export function PurchaseOrders() {
           </motion.div>
         </div>
       )}
+      <ConfirmationModal
+        isOpen={confirmConfig.isOpen}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        confirmText={confirmConfig.confirmText}
+        type={confirmConfig.type}
+        onConfirm={confirmConfig.onConfirm}
+        onCancel={() => setConfirmConfig(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 }

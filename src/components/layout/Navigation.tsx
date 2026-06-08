@@ -40,6 +40,7 @@ import {
   UserRound,
   Clock,
   DollarSign,
+  Sparkles,
 } from "lucide-react";
 import { ViewType, Product } from "../../types";
 import { cn } from "../../lib/utils";
@@ -63,6 +64,7 @@ const menuItems = [
   { id: "inventory" as ViewType, label: "Inventory", icon: Package },
   { id: "categories" as ViewType, label: "Categories", icon: Grid3X3 },
   { id: "warehouses" as ViewType, label: "Warehouses", icon: Warehouse },
+  { id: "inventory_pro_chat" as ViewType, label: "Inventory Pro (AI)", icon: Sparkles },
 ];
 
 const menuGroups = [

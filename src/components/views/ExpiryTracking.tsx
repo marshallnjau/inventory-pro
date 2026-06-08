@@ -40,6 +40,7 @@ import { useSettings } from "../../contexts/SettingsContext";
 import { Product } from "../../types";
 import { cn } from "../../lib/utils";
 import { motion, AnimatePresence } from "motion/react";
+import { ConfirmationModal } from "../ConfirmationModal";
 import {
   ResponsiveContainer,
   PieChart,
@@ -120,6 +121,20 @@ export function ExpiryTracking() {
   const { profile } = useAuth();
   const { currency } = useSettings();
   
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmText?: string;
+    type?: "danger" | "warning" | "info" | "success";
+    onConfirm: () => void | Promise<void>;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {}
+  });
+
   // Set loading to false initially because we operate in offline-friendly simulation dummy mode
   const [loading, setLoading] = useState(false);
 
@@ -266,23 +281,33 @@ export function ExpiryTracking() {
   };
 
   // Handle Dispose item synchronous memory actions
-  const handleDispose = async (id: string, name: string) => {
-    if (
-      !window.confirm(
-        `Are you sure you want to permanently dispose and remove "${name}" from inventory records?`
-      )
-    ) {
-      return;
-    }
-
-    setProducts((prev) => prev.filter((p) => p.id !== id));
+  const handleDispose = (id: string, name: string) => {
+    setConfirmConfig({
+      isOpen: true,
+      title: "Dispose & Remove Asset",
+      message: `Are you sure you want to permanently dispose and remove "${name}" from inventory records?`,
+      confirmText: "Dispose Asset",
+      type: "danger",
+      onConfirm: () => {
+        setProducts((prev) => prev.filter((p) => p.id !== id));
+        setConfirmConfig((prev) => ({ ...prev, isOpen: false }));
+      }
+    });
   };
 
   // Reset simulated entries helper to capture original pristine mockup state
   const resetDemoBatches = () => {
-    if (!window.confirm("Reset simulation database back to fresh default demo items?")) return;
-    localStorage.removeItem("expiry_tracking_dummy_products_v2");
-    window.location.reload();
+    setConfirmConfig({
+      isOpen: true,
+      title: "Reset Simulation Database",
+      message: "Are you sure you want to reset simulation database back to fresh default demo items?",
+      confirmText: "Reset Now",
+      type: "warning",
+      onConfirm: () => {
+        localStorage.removeItem("expiry_tracking_dummy_products_v2");
+        window.location.reload();
+      }
+    });
   };
 
   // Open edit modal
@@ -1657,6 +1682,15 @@ export function ExpiryTracking() {
           </>
         )}
       </AnimatePresence>
+      <ConfirmationModal
+        isOpen={confirmConfig.isOpen}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        confirmText={confirmConfig.confirmText}
+        type={confirmConfig.type}
+        onConfirm={confirmConfig.onConfirm}
+        onCancel={() => setConfirmConfig(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 }

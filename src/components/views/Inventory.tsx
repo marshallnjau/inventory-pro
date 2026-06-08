@@ -35,6 +35,7 @@ import { seedSampleData } from "../../services/sampleDataService";
 import { cn, formatCompactNumber } from "../../lib/utils";
 import { motion, AnimatePresence } from "motion/react";
 import { MovementSpeed, Product } from "../../types";
+import { ConfirmationModal } from "../ConfirmationModal";
 
 const movementStyles: Record<MovementSpeed, string> = {
   fast: "bg-emerald-50 text-emerald-600 border-emerald-100",
@@ -48,6 +49,20 @@ import Papa from "papaparse";
 export function Inventory() {
   const { user } = useAuth();
   const { profile, company, currency } = useSettings();
+
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmText?: string;
+    type?: "danger" | "warning" | "info" | "success";
+    onConfirm: () => void | Promise<void>;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {}
+  });
 
   const [searchTerm, setSearchTerm] = useState("");
   const [isAuditing, setIsAuditing] = useState(false);
@@ -328,19 +343,24 @@ export function Inventory() {
     }
   };
 
-  const handleDeleteProduct = async (id: string) => {
-    if (!profile?.companyId) return;
-    if (
-      !window.confirm(
-        "Are you sure you want to remove or dispose of this inventory product? This action cannot be undone.",
-      )
-    )
-      return;
-    try {
-      await deleteDoc(doc(db, `companies/${profile.companyId}/products`, id));
-    } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, "products");
-    }
+  const handleDeleteProduct = (id: string) => {
+    setConfirmConfig({
+      isOpen: true,
+      title: "Remove Inventory Asset",
+      message: "Are you sure you want to remove or dispose of this inventory product? This action cannot be undone.",
+      confirmText: "Dispose Asset",
+      type: "danger",
+      onConfirm: async () => {
+        if (!profile?.companyId) return;
+        try {
+          await deleteDoc(doc(db, `companies/${profile.companyId}/products`, id));
+        } catch (error) {
+          handleFirestoreError(error, OperationType.WRITE, "products");
+        } finally {
+          setConfirmConfig(prev => ({ ...prev, isOpen: false }));
+        }
+      }
+    });
   };
 
   if (loading) {
@@ -1376,6 +1396,15 @@ export function Inventory() {
           )}
         </div>
       </div>
+      <ConfirmationModal
+        isOpen={confirmConfig.isOpen}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        confirmText={confirmConfig.confirmText}
+        type={confirmConfig.type}
+        onConfirm={confirmConfig.onConfirm}
+        onCancel={() => setConfirmConfig(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 }
