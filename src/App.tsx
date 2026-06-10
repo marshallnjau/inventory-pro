@@ -261,7 +261,7 @@ function AppContent() {
       </div>
 
       <BottomNav currentView={currentView} onViewChange={setCurrentView} />
-      {currentView !== 'inventory_pro_chat' && <InventoryProFloatingWidget />}
+      {currentView === 'dashboard' && <InventoryProFloatingWidget />}
     </div>
   );
 }

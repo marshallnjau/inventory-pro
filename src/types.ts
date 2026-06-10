@@ -17,6 +17,8 @@ export interface Product {
   manufactureDate?: string;
   batchNumber?: string;
   expiryStatus?: 'Fresh' | 'Near Expiry' | 'Expired';
+  uom?: string; // Base Unit of Measure (UoM), e.g. Piece, kg, Liter
+  materialGroup?: string; // Material Group, e.g. Raw Materials, Finished Goods, Packaging
   createdAt: string;
   updatedAt: string;
 }

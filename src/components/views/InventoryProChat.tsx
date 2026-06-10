@@ -19,6 +19,7 @@ interface Message {
 
 interface InventoryProChatProps {
   isFloating?: boolean;
+  onClose?: () => void;
 }
 
 // Simple custom markdown renderer that covers list, table, header, and bold patterns with premium typography
@@ -239,7 +240,7 @@ const SUGGESTED_QUESTIONS = [
   }
 ];
 
-export function InventoryProChat({ isFloating = false }: InventoryProChatProps) {
+export function InventoryProChat({ isFloating = false, onClose }: InventoryProChatProps) {
   const { profile, company } = useSettings();
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -389,8 +390,8 @@ export function InventoryProChat({ isFloating = false }: InventoryProChatProps) 
   // Shared Central Chat Core Panel Component
   const chatCoreJSX = (
     <div className={cn(
-      "flex flex-col bg-[#0B1120] text-slate-100 overflow-hidden relative h-full",
-      !isFloating ? "flex-1 rounded-3xl border border-white/10 shadow-2xl" : ""
+      "flex flex-col bg-[#0B1120] text-slate-100 overflow-hidden relative min-h-[400px] h-full",
+      !isFloating ? "flex-1 rounded-3xl border border-white/10 shadow-2xl h-full" : "h-full"
     )}>
       {/* Background soft ambient lights */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-30 select-none">
@@ -399,24 +400,24 @@ export function InventoryProChat({ isFloating = false }: InventoryProChatProps) 
       </div>
 
       {/* Header Panel */}
-      <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between px-6 py-4.5 bg-[#0F1626]/80 backdrop-blur-md border-b border-white/5 shrink-0 gap-3">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#38BDF8] to-[#1E3A8A] flex items-center justify-center shadow-lg shadow-blue-500/10">
-            <Sparkles className="w-5 h-5 text-white" />
+      <div className="relative z-10 flex items-center justify-between px-4 sm:px-6 py-4 bg-[#0F1626]/90 backdrop-blur-md border-b border-white/5 shrink-0 select-none">
+        <div className="flex items-center gap-3 min-w-0 pr-4">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#38BDF8] to-[#1E3A8A] flex items-center justify-center shadow-lg shadow-blue-500/10 shrink-0">
+            <Sparkles className="w-5 h-5 text-white animate-pulse" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-sm sm:text-base font-bold text-white tracking-tight font-sans">Inventory Pro</h2>
-              <span className="px-2 py-0.5 text-[9px] bg-[#38BDF8]/15 text-[#38BDF8] font-bold rounded-full tracking-wider uppercase border border-[#38BDF8]/20 animate-pulse">Assist Live</span>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-sm sm:text-base font-bold text-white tracking-tight font-sans truncate">Inventory Pro AI</h2>
+              <span className="px-2 py-0.5 text-[8.5px] bg-[#38BDF8]/15 text-[#38BDF8] font-bold rounded-full tracking-wider uppercase border border-[#38BDF8]/20 whitespace-nowrap">Assist Live</span>
             </div>
-            <p className="text-[11px] text-slate-400">Autonomous context analysis engine from database states</p>
+            <p className="text-[10px] sm:text-[11px] text-slate-400 truncate">Autonomous context intelligence engine</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2.5">
-          <div className="flex items-center gap-1.5 px-3 py-1 bg-white/[0.03] border border-white/5 rounded-lg text-[11px]">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-            <span className="text-slate-400 font-mono">Catalog: {products.length} Items</span>
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="hidden xs:flex items-center gap-1.5 px-3 py-1 bg-white/[0.03] border border-white/5 rounded-lg text-[10px]">
+             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+             <span className="text-slate-400 font-mono">Catalog: {products.length} Items</span>
           </div>
           
           <button 
@@ -433,45 +434,93 @@ export function InventoryProChat({ isFloating = false }: InventoryProChatProps) 
           >
             <RefreshCw className="w-3.5 h-3.5" />
           </button>
+
+          {onClose && (
+            <button 
+              onClick={onClose}
+              className="p-2 bg-white/5 hover:bg-white/10 active:bg-white/15 text-slate-400 hover:text-white rounded-lg transition-all cursor-pointer h-9 w-9 flex items-center justify-center border border-white/5 hover:border-white/10"
+              title="Close Chat"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
 
       {/* Messages Feed Viewport */}
-      <div className="relative z-10 flex-1 overflow-y-auto px-6 py-6 space-y-5 scrollbar-thin scrollbar-thumb-white/10">
+      <div className="relative z-10 flex-1 overflow-y-auto px-4 sm:px-6 py-6 space-y-5 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
         <AnimatePresence initial={false}>
-          {messages.map((m) => (
-            <motion.div
-              key={m.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className={cn(
-                "flex gap-3 max-w-[90%] sm:max-w-[82%]",
-                m.role === "user" ? "ml-auto flex-row-reverse" : "mr-auto"
-              )}
-            >
-              <div className={cn(
-                "w-8.5 h-8.5 rounded-xl flex items-center justify-center shrink-0 border text-[11px] font-bold select-none",
-                m.role === "user" 
-                  ? "bg-[#102A5C] border-[#38BDF8]/30 text-[#38BDF8]" 
-                  : "bg-[#1E293B] border-white/10 text-slate-300"
-              )}>
-                {m.role === "user" ? "ME" : <Bot className="w-4 h-4" />}
-              </div>
+          {messages.map((m, idx) => (
+            <React.Fragment key={m.id}>
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className={cn(
+                  "flex gap-3 max-w-[88%] sm:max-w-[78%]",
+                  m.role === "user" ? "ml-auto flex-row-reverse" : "mr-auto"
+                )}
+              >
+                <div className={cn(
+                  "w-8.5 h-8.5 rounded-xl flex items-center justify-center shrink-0 border text-[11px] font-bold select-none",
+                  m.role === "user" 
+                    ? "bg-[#102A5C] border-[#38BDF8]/30 text-[#38BDF8]" 
+                    : "bg-[#1E293B] border-white/10 text-slate-300"
+                )}>
+                  {m.role === "user" ? "ME" : <Bot className="w-4 h-4 text-sky-450" />}
+                </div>
 
-              <div className={cn(
-                "p-4 rounded-2xl text-[13px] shadow-lg select-text",
-                m.role === "user" 
-                  ? "bg-[#1E293B] text-slate-100 border border-white/10 rounded-tr-none px-4.5" 
-                  : "bg-gradient-to-b from-[#131B2E] to-[#0F1422] text-slate-200 border border-white/5 rounded-tl-none px-4.5"
-              )}>
-                <SmartMarkdown content={m.text} />
-                <span className="block mt-2.5 text-[9px] text-slate-500 font-mono text-right select-none">
-                  {m.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </span>
-              </div>
-            </motion.div>
+                <div className={cn(
+                  "py-3 px-4 sm:py-3.5 sm:px-5 rounded-2xl text-[13px] leading-relaxed shadow-lg select-text",
+                  m.role === "user" 
+                    ? "bg-[#1E293B] text-slate-100 border border-white/10 rounded-tr-none" 
+                    : "bg-gradient-to-b from-[#131B2E] to-[#0F1422] text-slate-200 border border-white/5 rounded-tl-none"
+                )}>
+                  <SmartMarkdown content={m.text} />
+                  <span className="block mt-2 text-[9px] text-slate-500 font-mono text-right select-none">
+                    {m.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
+              </motion.div>
+
+              {/* If this is the welcome message and conversation hasn't expanded yet */}
+              {idx === 0 && messages.length === 1 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                  className="w-full max-w-2xl mx-auto pt-2 pb-6 space-y-3.5"
+                >
+                  <p className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-2 px-1">Suggested Inquiries</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    {SUGGESTED_QUESTIONS.map((q, qidx) => {
+                      const IconComponent = q.icon;
+                      return (
+                        <button
+                          key={qidx}
+                          onClick={() => handleSendMessage(q.text)}
+                          className={cn(
+                            "group text-left p-4 rounded-2xl bg-gradient-to-b border border-white/5 hover:border-[#38BDF8]/40 transition-all cursor-pointer hover:shadow-xl active:scale-[0.99] flex flex-col justify-between min-h-[96px]",
+                            q.color
+                          )}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="p-2.5 rounded-xl bg-white/5 text-[#38BDF8] shrink-0">
+                              <IconComponent className="w-4 h-4" />
+                            </div>
+                            <div className="space-y-0.5">
+                              <h4 className="text-[13px] font-bold text-white group-hover:text-[#38BDF8] transition-colors">{q.label}</h4>
+                              <p className="text-[11.5px] text-slate-350 leading-relaxed line-clamp-2 pr-1">{q.text}</p>
+                            </div>
+                          </div>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </motion.div>
+              )}
+            </React.Fragment>
           ))}
 
           {loading && (
@@ -483,9 +532,9 @@ export function InventoryProChat({ isFloating = false }: InventoryProChatProps) 
               <div className="w-8.5 h-8.5 rounded-xl bg-[#1E293B] border border-white/5 text-slate-400 flex items-center justify-center shrink-0 select-none">
                 <Bot className="w-4 h-4 text-[#38BDF8] animate-pulse" />
               </div>
-              <div className="px-4.5 py-3.5 bg-[#131B2E]/60 border border-white/5 rounded-2xl rounded-tl-none flex items-center gap-3 shadow-md">
-                <Loader2 className="w-4 h-4 text-[#38BDF8] animate-spin" />
-                <span className="text-[12px] text-slate-400 font-medium">Inventory Pro is evaluating database states...</span>
+              <div className="px-4.5 py-3 bg-[#131B2E]/60 border border-white/5 rounded-2xl rounded-tl-none flex items-center gap-3 shadow-md">
+                <Loader2 className="w-3.5 h-3.5 text-[#38BDF8] animate-spin" />
+                <span className="text-[12px] text-slate-400 font-medium">Inventory Pro AI is evaluating database states...</span>
               </div>
             </motion.div>
           )}
@@ -493,52 +542,32 @@ export function InventoryProChat({ isFloating = false }: InventoryProChatProps) 
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Suggested blueprint cards - Row view under first message */}
-      {messages.length === 1 && (
-        <div className="relative z-10 px-6 py-1 bg-black/10 border-t border-white/5 shrink-0 overflow-x-auto space-x-3.5 flex items-center justify-start scrollbar-none py-3.5 select-none">
-          {SUGGESTED_QUESTIONS.map((q, idx) => {
-            const IconComponent = q.icon;
-            return (
-              <button
-                key={idx}
-                onClick={() => handleSendMessage(q.text)}
-                className={cn(
-                  "shrink-0 px-4 py-3 rounded-xl bg-gradient-to-r text-left border border-white/5 hover:border-[#38BDF8]/40 transition-all text-xs text-slate-300 hover:text-white cursor-pointer hover:shadow-lg hover:scale-[1.01] active:scale-[0.99]",
-                  q.color
-                )}
-              >
-                <div className="flex items-center gap-2 font-semibold text-white">
-                  <IconComponent className="w-3.5 h-3.5 text-[#38BDF8]" />
-                  <span>{q.label}</span>
-                </div>
-                <p className="text-[10px] text-slate-400 mt-1 max-w-[210px] truncate">{q.text}</p>
-              </button>
-            )
-          })}
-        </div>
-      )}
-
       {/* Action / Input Tray */}
-      <div className="relative z-10 px-6 py-4.5 bg-[#0F1626]/90 border-t border-white/5 shrink-0">
+      <div className="relative z-10 px-4 sm:px-6 py-4.5 bg-[#0F1626]/95 border-t border-white/5 shrink-0">
         <div className="flex items-center gap-3">
-          <input
-            type="text"
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyDown={handleKeyPress}
-            placeholder={loading ? "Generating restock models..." : "Ask Inventory Pro: 'Itemize slow moving stock', 'Write a supplier request for widgets', ..."}
-            disabled={loading}
-            className="flex-1 h-12 px-5 bg-black/45 hover:bg-black/60 focus:bg-black/75 border border-white/10 hover:border-white/15 focus:border-[#38BDF8]/50 focus:outline-none rounded-xl text-[13px] transition-all text-slate-200 shadow-inner placeholder:text-slate-500"
-          />
+          <div className="relative flex-1">
+            <input
+              type="text"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={handleKeyPress}
+              placeholder={loading ? "Analyzing database stats..." : "Ask Inventory Pro AI..."}
+              disabled={loading}
+              className="w-full h-12 pl-4 pr-12 bg-black/35 hover:bg-black/50 focus:bg-black/65 border border-white/10 hover:border-white/15 focus:border-[#38BDF8]/50 focus:outline-none rounded-2xl text-[13.5px] transition-all text-slate-100 shadow-inner placeholder:text-slate-500"
+            />
+          </div>
           <button
             onClick={() => handleSendMessage(inputValue)}
             disabled={!inputValue.trim() || loading}
-            className="w-12 h-12 bg-gradient-to-tr from-[#38BDF8] to-[#1E3A8A] hover:from-[#4fcffd] hover:to-[#2248ab] disabled:opacity-30 disabled:cursor-not-allowed justify-center text-white transition-all rounded-xl shadow-lg cursor-pointer flex items-center shrink-0 active:scale-95"
+            className="w-12 h-12 bg-gradient-to-tr from-[#38BDF8] to-[#1E3A8A] hover:from-[#4fcffd] hover:to-[#2248ab] disabled:opacity-30 disabled:cursor-not-allowed justify-center text-white transition-all rounded-2xl shadow-lg cursor-pointer flex items-center shrink-0 active:scale-95"
             title="Send query"
           >
             <Send className="w-4.5 h-4.5" />
           </button>
         </div>
+        <p className="text-[10px] text-center text-slate-500 mt-2.5 font-medium tracking-wide">
+          Inventory Pro AI evaluates real-time catalogs, suppliers & alerts to draft accurate operational answers.
+        </p>
       </div>
     </div>
   );
@@ -619,7 +648,7 @@ export function InventoryProChat({ isFloating = false }: InventoryProChatProps) 
             </span>
           </div>
 
-          <div className="space-y-3 overflow-y-auto pr-1 flex-1 scrollbar-thin scrollbar-thumb-white/5">
+          <div className="space-y-3 overflow-y-auto pr-1 flex-1 scrollbar-thin scrollbar-thumb-white/5 animate-none">
             {products.filter(p => (p.quantity ?? 0) <= (p.minStock ?? 5)).length === 0 ? (
               <div className="text-center py-12 text-slate-400 text-xs">
                 <Check className="w-9 h-9 text-emerald-400 mx-auto mb-3 opacity-60 bg-emerald-500/10 p-2 rounded-full" />
@@ -628,17 +657,17 @@ export function InventoryProChat({ isFloating = false }: InventoryProChatProps) 
             ) : (
               products.filter(p => (p.quantity ?? 0) <= (p.minStock ?? 5)).slice(0, 5).map((p, idx) => (
                 <div key={idx} className="bg-white/[0.02] p-3 rounded-2xl border border-white/5 hover:border-white/15 transition-all flex items-center justify-between gap-3 group">
-                  <div className="min-w-0">
-                    <span className="text-[12px] font-bold text-white block truncate">{p.name}</span>
-                    <span className="text-[10px] text-slate-400 font-mono">Stock: <strong className="text-red-400 font-bold">{p.quantity}</strong> / Min req: {p.minStock}</span>
-                  </div>
-                  <button
-                    onClick={() => handleSendMessage(`Let's draft a supplier order draft and restock RFP inquiry specifications for raw ingredient items matching sku: ${p.sku} (${p.name}). Please configure active values.`)}
-                    className="text-[10px] font-bold text-[#38BDF8] hover:text-white bg-sky-500/10 hover:bg-sky-500/20 px-3 py-1.5 rounded-xl border border-sky-500/20 transition-all flex items-center gap-1 shrink-0 cursor-pointer"
-                  >
-                    <span>Draft order</span>
-                    <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
-                  </button>
+                   <div className="min-w-0">
+                     <span className="text-[12px] font-bold text-white block truncate">{p.name}</span>
+                     <span className="text-[10px] text-slate-400 font-mono">Stock: <strong className="text-red-400 font-bold">{p.quantity}</strong> / Min req: {p.minStock}</span>
+                   </div>
+                   <button
+                     onClick={() => handleSendMessage(`Let's draft a supplier order draft and restock RFP inquiry specifications for raw ingredient items matching sku: ${p.sku} (${p.name}). Please configure active values.`)}
+                     className="text-[10px] font-bold text-[#38BDF8] hover:text-white bg-sky-500/10 hover:bg-sky-500/20 px-3 py-1.5 rounded-xl border border-sky-500/20 transition-all flex items-center gap-1 shrink-0 cursor-pointer"
+                   >
+                     <span>Draft order</span>
+                     <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                   </button>
                 </div>
               ))
             )}
@@ -662,7 +691,7 @@ export function InventoryProChat({ isFloating = false }: InventoryProChatProps) 
             </button>
             <button 
               onClick={() => handleSendMessage("Suggest a detailed restock model and strategic safety margin proposal for " + (company?.name || "Invenio") + " products matches obsolecense speed ratios.")}
-              className="w-full text-left text-[11px] p-3.5 rounded-2xl bg-white/[0.01] hover:bg-white/[0.04] border border-white/5 hover:border-white/10 text-slate-300 hover:text-white transition-all flex items-center justify-between group cursor-pointer"
+              className="w-full text-left text-[11px] p-3.5 rounded-2xl bg-white/[0.01] hover:bg-white/[0.04] border border-[#EEEEEE]/5 hover:border-[#EEEEEE]/10 text-slate-300 hover:text-white transition-all flex items-center justify-between group cursor-pointer"
             >
               <span>Replenishment Strategic Margins</span>
               <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-sky-400 group-hover:translate-x-0.5 transition-all" />
@@ -683,7 +712,7 @@ export function InventoryProFloatingWidget() {
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (widgetRef.current && !widgetRef.current.contains(event.target as Node)) {
-        // Safe standard backdrop logic
+        // Backdrop overlay handles close click gracefully, click outside can also close
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -691,48 +720,50 @@ export function InventoryProFloatingWidget() {
   }, []);
 
   return (
-    <div ref={widgetRef} className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
+    <>
+      {/* Backdrop Dimmer Overlay for Focus Control */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 15 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 15 }}
-            className="w-[calc(100vw-32px)] sm:w-[480px] h-[600px] bg-[#0B0F19]/95 backdrop-blur-md rounded-3xl border border-white/10 shadow-2xl overflow-hidden flex flex-col mb-4"
-          >
-            {/* Widget Header bars */}
-            <div className="flex items-center justify-between px-5 py-3.5 bg-[#0F1626]/90 border-b border-white/5 shrink-0 select-none">
-              <div className="flex items-center gap-2.5">
-                <Sparkles className="w-4 h-4 text-[#38BDF8]" />
-                <h3 className="text-xs font-bold text-white tracking-tight">Inventory Pro Chat</h3>
-              </div>
-              <button 
-                onClick={() => setIsOpen(false)}
-                className="p-1 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-all cursor-pointer"
-              >
-                <X className="w-4.5 h-4.5" />
-              </button>
-            </div>
-
-            {/* Scale container */}
-            <div className="flex-1 overflow-hidden" style={{ height: "540px" }}>
-              <InventoryProChat isFloating />
-            </div>
-          </motion.div>
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsOpen(false)}
+            className="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-[190] cursor-pointer"
+          />
         )}
       </AnimatePresence>
 
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className={cn(
-          "w-13 h-13 rounded-full cursor-pointer bg-gradient-to-tr from-[#38BDF8] to-[#1E3A8A] hover:from-[#4fcffd] hover:to-[#2248ab] flex items-center justify-center text-white shadow-xl shadow-blue-500/25 hover:scale-105 active:scale-95 transition-all outline-none",
-          isOpen ? "rotate-90 bg-slate-900 border border-white/10" : "animate-bounce"
-        )}
-        style={{ animationDuration: '3s' }}
-        title="Ask Inventory Pro AI"
-      >
-        <Sparkles className="w-5.5 h-5.5" />
-      </button>
-    </div>
+      <div ref={widgetRef} className="fixed bottom-22 sm:bottom-25 md:bottom-6 right-4 sm:right-6 z-[200] flex flex-col items-end">
+        <AnimatePresence>
+          {isOpen && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 30 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 30 }}
+              transition={{ type: "spring", damping: 25, stiffness: 350 }}
+              className="fixed sm:absolute bottom-0 sm:bottom-16 right-0 sm:right-0 left-0 sm:left-auto w-full sm:w-[500px] h-[86vh] sm:h-[660px] max-h-[88vh] sm:max-h-[82vh] bg-[#0B0F19] border-t sm:border border-white/10 shadow-2xl overflow-hidden flex flex-col rounded-t-[2rem] sm:rounded-3xl z-[200]"
+            >
+              <div className="flex-1 min-h-0 overflow-hidden">
+                <InventoryProChat isFloating onClose={() => setIsOpen(false)} />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className={cn(
+            "w-12 h-12 sm:w-14 sm:h-14 rounded-full cursor-pointer bg-gradient-to-tr from-[#38BDF8] to-[#1E3A8A] hover:from-[#4fcffd] hover:to-[#2248ab] flex items-center justify-center text-white shadow-xl shadow-blue-500/25 hover:scale-105 active:scale-95 transition-all outline-none z-[201]",
+            isOpen ? "rotate-95 bg-slate-900 border border-white/10 shadow-none scale-100" : "animate-bounce"
+          )}
+          style={{ animationDuration: '3s' }}
+          title="Ask Inventory Pro AI"
+        >
+          <Sparkles className="w-5 sm:w-6 h-5 sm:h-6" />
+        </button>
+      </div>
+    </>
   );
 }
+

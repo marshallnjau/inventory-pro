@@ -54,6 +54,8 @@
         "lastSold": { "type": "string" },
         "image": { "type": "string" },
         "expiryDate": { "type": "string" },
+        "uom": { "type": "string" },
+        "materialGroup": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },

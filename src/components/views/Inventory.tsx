@@ -37,6 +37,13 @@ import { motion, AnimatePresence } from "motion/react";
 import { MovementSpeed, Product } from "../../types";
 import { ConfirmationModal } from "../ConfirmationModal";
 
+const BRANCHES = [
+  { id: "main-wh", name: "Main Warehouse", location: "Building A, Industrial Zone" },
+  { id: "downtown-store", name: "Downtown Retail Store", location: "456 Commerce Ave, City Center" },
+  { id: "north-branch", name: "Northside Distribution", location: "789 Highway 10, Northern Sector" },
+  { id: "eastside-hub", name: "Eastside Logistics Hub", location: "101 Terminal Rd, East Port" },
+];
+
 const movementStyles: Record<MovementSpeed, string> = {
   fast: "bg-emerald-50 text-emerald-600 border-emerald-100",
   moderate: "bg-blue-50 text-blue-600 border-blue-100",
@@ -79,6 +86,22 @@ export function Inventory() {
     customReason: "",
   });
 
+  const [activeInventoryTab, setActiveInventoryTab] = useState<"stock" | "transfers">("stock");
+  const [isTransferringStock, setIsTransferringStock] = useState(false);
+  const [isSubmittingTransfer, setIsSubmittingTransfer] = useState(false);
+  const [transferData, setTransferData] = useState({
+    productId: "",
+    transferType: "out" as "in" | "out",
+    otherBranchId: "downtown-store",
+    quantity: 1,
+    subtractSource: true,
+    addDestination: true,
+    notes: "",
+  });
+  const [movements, setMovements] = useState<any[]>([]);
+  const [movementsLoading, setMovementsLoading] = useState(true);
+  const [selectedProductDetail, setSelectedProductDetail] = useState<Product | null>(null);
+
   useEffect(() => {
     if (!profile?.companyId) return;
 
@@ -98,6 +121,33 @@ export function Inventory() {
       (error) => {
         handleFirestoreError(error, OperationType.GET, path);
         setLoading(false);
+      },
+    );
+
+    return unsubscribe;
+  }, [profile?.companyId]);
+
+  useEffect(() => {
+    if (!profile?.companyId) return;
+
+    const path = `companies/${profile.companyId}/stockMovements`;
+    const q = collection(db, path);
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const docs = snapshot.docs.map((doc) => ({
+          ...doc.data(),
+          id: doc.id,
+        }));
+        // Sort by createdAt descending
+        docs.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        setMovements(docs);
+        setMovementsLoading(false);
+      },
+      (error) => {
+        handleFirestoreError(error, OperationType.GET, path);
+        setMovementsLoading(false);
       },
     );
 
@@ -130,6 +180,9 @@ export function Inventory() {
     expiryDate: "",
     manufactureDate: "",
     batchNumber: "",
+    warehouseId: "main-wh",
+    uom: "Piece",
+    materialGroup: "Finished Goods",
   });
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -153,6 +206,8 @@ export function Inventory() {
               quantity: parseFloat(item.quantity) || 0,
               value: parseFloat(item.value) || 0,
               movement: (item.movement || "moderate") as MovementSpeed,
+              uom: item.uom || item.UoM || item.unitKey || "Piece",
+              materialGroup: item.materialGroup || item.material_group || item.materialGroupKey || "Finished Goods",
               lastSold: new Date().toISOString().split("T")[0],
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString(),
@@ -247,6 +302,204 @@ export function Inventory() {
     }
   };
 
+  const handleTransferStock = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!profile?.companyId || !transferData.productId) {
+      alert("Error: Please select a product to transfer.");
+      return;
+    }
+
+    setIsSubmittingTransfer(true);
+
+    try {
+      const sourceProduct = products.find((p) => p.id === transferData.productId);
+      if (!sourceProduct) {
+        alert("Error: Could not find the selected product.");
+        setIsSubmittingTransfer(false);
+        return;
+      }
+
+      const qty = parseFloat(transferData.quantity as any);
+      if (isNaN(qty) || qty <= 0) {
+        alert("Error: Transfer quantity must be greater than zero.");
+        setIsSubmittingTransfer(false);
+        return;
+      }
+
+      const sourceWarehouseId = sourceProduct.warehouseId || "main-wh";
+      const destWarehouseId = transferData.otherBranchId;
+
+      if (sourceWarehouseId === destWarehouseId) {
+        alert("Error: Source and destination branches cannot be the same.");
+        setIsSubmittingTransfer(false);
+        return;
+      }
+
+      const sourceQty = parseFloat(sourceProduct.quantity as any) || 0;
+
+      // If transferring OUT
+      if (transferData.transferType === "out") {
+        if (sourceQty < qty) {
+          alert(`Error: Insufficient stock at source. Only ${sourceQty} units available.`);
+          setIsSubmittingTransfer(false);
+          return;
+        }
+
+        // 1. Subtract from source product
+        const sourceRef = doc(
+          db,
+          `companies/${profile.companyId}/products`,
+          sourceProduct.id,
+        );
+        const newSourceQty = sourceQty - qty;
+        await updateDoc(sourceRef, {
+          quantity: newSourceQty,
+          updatedAt: new Date().toISOString(),
+        });
+
+        // 2. Find or create destination product
+        const destProduct = products.find(
+          (p) => p.sku === sourceProduct.sku && (p.warehouseId || "main-wh") === destWarehouseId
+        );
+
+        let finalDestQty = qty;
+        if (destProduct) {
+          const destProductQty = parseFloat(destProduct.quantity as any) || 0;
+          finalDestQty = destProductQty + qty;
+          const destRef = doc(
+            db,
+            `companies/${profile.companyId}/products`,
+            destProduct.id,
+          );
+          await updateDoc(destRef, {
+            quantity: finalDestQty,
+            updatedAt: new Date().toISOString(),
+          });
+        } else {
+          // Create product in destination branch
+          const newId = `prod_${Date.now()}_dest`;
+          await setDoc(
+            doc(db, `companies/${profile.companyId}/products`, newId),
+            {
+              ...sourceProduct,
+              id: newId,
+              warehouseId: destWarehouseId,
+              quantity: qty,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            }
+          );
+        }
+
+        // 3. Log Stock Movement
+        const movementId = `mov_tr_${Date.now()}`;
+        await setDoc(
+          doc(db, `companies/${profile.companyId}/stockMovements`, movementId),
+          {
+            id: movementId,
+            productId: sourceProduct.id,
+            productName: sourceProduct.name,
+            sku: sourceProduct.sku,
+            type: "transfer",
+            transferType: "out",
+            sourceWarehouseId: sourceWarehouseId,
+            destWarehouseId: destWarehouseId,
+            quantity: qty,
+            beforeQty: sourceQty,
+            afterQty: newSourceQty,
+            createdAt: new Date().toISOString(),
+            createdBy: user?.email || user?.uid || "staff",
+            reason: transferData.notes || `Stock transfer to ${BRANCHES.find(b => b.id === destWarehouseId)?.name || destWarehouseId}`,
+          }
+        );
+      } else {
+        // If transferring IN (Receive Stock from another branch)
+        if (transferData.subtractSource) {
+          // Deduct from other branch product first
+          const otherProduct = products.find(
+            (p) => p.sku === sourceProduct.sku && (p.warehouseId || "main-wh") === destWarehouseId
+          );
+
+          if (!otherProduct) {
+            alert(`Error: No matching product with SKU ${sourceProduct.sku} found at source branch (${BRANCHES.find(b => b.id === destWarehouseId)?.name || destWarehouseId}).`);
+            setIsSubmittingTransfer(false);
+            return;
+          }
+
+          const otherProductQty = parseFloat(otherProduct.quantity as any) || 0;
+          if (otherProductQty < qty) {
+            alert(`Error: Insufficient stock at source branch. Only ${otherProductQty} units available at ${BRANCHES.find(b => b.id === destWarehouseId)?.name || destWarehouseId}.`);
+            setIsSubmittingTransfer(false);
+            return;
+          }
+
+          // Subtract from source branch product
+          const otherRef = doc(
+            db,
+            `companies/${profile.companyId}/products`,
+            otherProduct.id,
+          );
+          await updateDoc(otherRef, {
+            quantity: otherProductQty - qty,
+            updatedAt: new Date().toISOString(),
+          });
+        }
+
+        // Add to destination product (sourceProduct)
+        const finalDestQty = sourceQty + qty;
+        const sourceRef = doc(
+          db,
+          `companies/${profile.companyId}/products`,
+          sourceProduct.id,
+        );
+        await updateDoc(sourceRef, {
+          quantity: finalDestQty,
+          updatedAt: new Date().toISOString(),
+        });
+
+        // Log Stock Movement
+        const movementId = `mov_tr_${Date.now()}`;
+        await setDoc(
+          doc(db, `companies/${profile.companyId}/stockMovements`, movementId),
+          {
+            id: movementId,
+            productId: sourceProduct.id,
+            productName: sourceProduct.name,
+            sku: sourceProduct.sku,
+            type: "transfer",
+            transferType: "in",
+            sourceWarehouseId: destWarehouseId,
+            destWarehouseId: sourceWarehouseId,
+            quantity: qty,
+            beforeQty: sourceQty,
+            afterQty: finalDestQty,
+            createdAt: new Date().toISOString(),
+            createdBy: user?.email || user?.uid || "staff",
+            reason: transferData.notes || `Stock transfer from ${BRANCHES.find(b => b.id === destWarehouseId)?.name || destWarehouseId}`,
+          }
+        );
+      }
+
+      alert("Stock transfer processed successfully!");
+      setIsTransferringStock(false);
+      setTransferData({
+        productId: "",
+        transferType: "out",
+        otherBranchId: "downtown-store",
+        quantity: 1,
+        subtractSource: true,
+        addDestination: true,
+        notes: "",
+      });
+    } catch (error: any) {
+      console.error("Failed to run stock transfer:", error);
+      alert(`Error processing transfer: ${error?.message || String(error)}`);
+      handleFirestoreError(error, OperationType.UPDATE, "products");
+    } finally {
+      setIsSubmittingTransfer(false);
+    }
+  };
+
   const handleAddProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !profile?.companyId || !newProduct.name || !newProduct.sku)
@@ -294,6 +547,9 @@ export function Inventory() {
         expiryDate: "",
         manufactureDate: "",
         batchNumber: "",
+        warehouseId: "main-wh",
+        uom: "Piece",
+        materialGroup: "Finished Goods",
       });
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, "products");
@@ -473,6 +729,13 @@ export function Inventory() {
             Stock Adjust
           </button>
           <button
+            onClick={() => setIsTransferringStock(true)}
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 h-11 border border-indigo-200 rounded-lg bg-indigo-50/50 text-indigo-700 font-bold hover:bg-indigo-100/70 transition-all text-xs flex items-center"
+          >
+            <ArrowUpDown className="rotate-90 w-4 h-4 text-indigo-500 shrink-0" />
+            <span>Stock Transfer</span>
+          </button>
+          <button
             onClick={() => {
               const initialCounts: Record<string, number> = {};
               displayProducts.forEach((p) => {
@@ -517,6 +780,250 @@ export function Inventory() {
           </button>
         </div>
       </div>
+
+      <AnimatePresence>
+        {selectedProductDetail && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[110] flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 10 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 10 }}
+              className="bg-white w-full max-w-lg rounded-2xl border border-slate-200 shadow-2xl flex flex-col max-h-[90vh] overflow-hidden"
+            >
+              {/* Header */}
+              <div className="p-6 border-b border-slate-100 flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 border border-blue-100">
+                    <Package className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-extrabold text-slate-900 leading-tight">
+                      {selectedProductDetail.name}
+                    </h3>
+                    <p className="text-xs text-slate-400 font-bold mt-0.5 uppercase tracking-widest">
+                      {selectedProductDetail.sku} • {selectedProductDetail.category || "General"}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setSelectedProductDetail(null)}
+                  className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition-all"
+                >
+                  <X className="w-5 h-5 animate-none" />
+                </button>
+              </div>
+
+              {/* Scrollable Content */}
+              <div className="p-6 space-y-6 overflow-y-auto">
+                {/* 1. Quantitative Block */}
+                <div className="grid grid-cols-2 gap-4 bg-slate-50/50 p-4 rounded-xl border border-slate-100">
+                  <div>
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">
+                      Current Stock
+                    </span>
+                    <span className={cn(
+                      "text-xl font-black",
+                      selectedProductDetail.quantity < 50 ? "text-rose-600" : "text-slate-900"
+                    )}>
+                      {selectedProductDetail.quantity.toLocaleString()} <span className="text-xs font-semibold text-slate-400">({selectedProductDetail.uom || "pcs"})</span>
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">
+                      Total Valuation
+                    </span>
+                    <span className="text-xl font-black text-indigo-600">
+                      {currency} {(selectedProductDetail.value * selectedProductDetail.quantity).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  <div className="pt-2 border-t border-slate-100">
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">
+                      Cost per Unit
+                    </span>
+                    <span className="text-xs font-bold text-slate-700">
+                      {currency} {parseFloat(selectedProductDetail.value as any || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  <div className="pt-2 border-t border-slate-100">
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">
+                      Velocity Score
+                    </span>
+                    <span className={cn(
+                      "inline-flex items-center gap-1 text-[9px] font-extrabold uppercase tracking-wider py-0.5 px-2 rounded-md",
+                      selectedProductDetail.movement === 'fast' ? "bg-emerald-50 text-emerald-600 border border-emerald-100" :
+                      selectedProductDetail.movement === 'moderate' ? "bg-blue-50 text-blue-600 border border-blue-100" :
+                      selectedProductDetail.movement === 'slow' ? "bg-amber-50 text-amber-600 border border-amber-100" :
+                      "bg-rose-50 text-rose-600 border border-rose-100 animate-pulse"
+                    )}>
+                      {selectedProductDetail.movement || "moderate"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* 2. Location details */}
+                <div className="space-y-3">
+                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest pb-1 border-b border-slate-100">
+                    Warehousing & Placement
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Branch / Facility</span>
+                      <span className="text-xs font-semibold text-slate-800">
+                        {BRANCHES.find(b => b.id === (selectedProductDetail.warehouseId || "main-wh"))?.name || BRANCHES[0].name}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Precise Location</span>
+                      <span className="text-xs font-semibold text-slate-500 italic">
+                        {BRANCHES.find(b => b.id === (selectedProductDetail.warehouseId || "main-wh"))?.location || BRANCHES[0].location}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Product Characteristics & Taxonomy */}
+                <div className="space-y-3">
+                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest pb-1 border-b border-slate-100">
+                    Classification & Logistics
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Material Group</span>
+                      <span className="text-xs font-semibold text-slate-800">
+                        {selectedProductDetail.materialGroup || "Finished Goods"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Base Unit of Measure</span>
+                      <span className="text-xs font-semibold text-slate-800">
+                        {selectedProductDetail.uom || "Piece"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4. Traceability & Manufacturing */}
+                <div className="space-y-3">
+                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest pb-1 border-b border-slate-100">
+                    Compliance & Traceability
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Batch / Lot Number</span>
+                      <span className="text-xs font-mono font-bold text-slate-700">
+                        {selectedProductDetail.batchNumber || "UNBATCHED"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Manufacture Date</span>
+                      <span className="text-xs font-semibold text-slate-700">
+                        {selectedProductDetail.manufactureDate || "Not Recorded"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Expiry Status</span>
+                      <div className="mt-1">
+                        {selectedProductDetail.expiryDate ? (() => {
+                          const today = new Date();
+                          today.setHours(0,0,0,0);
+                          const exp = new Date(selectedProductDetail.expiryDate);
+                          exp.setHours(0,0,0,0);
+                          const diff = Math.ceil((exp.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                          if (diff < 0) {
+                            return <span className="bg-rose-50 text-rose-600 border border-rose-100 font-extrabold text-[9px] uppercase tracking-wider px-2 py-0.5 rounded">Expired</span>;
+                          } else if (diff <= 30) {
+                            return <span className="bg-amber-50 text-amber-600 border border-amber-100 font-extrabold text-[9px] uppercase tracking-wider px-2 py-0.5 rounded">Near Expiry</span>;
+                          } else {
+                            return <span className="bg-emerald-50 text-emerald-600 border border-emerald-100 font-extrabold text-[9px] uppercase tracking-wider px-2 py-0.5 rounded">Fresh</span>;
+                          }
+                        })() : <span className="text-xs font-semibold text-slate-400">Non-Perishable</span>}
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Expiration Date</span>
+                      <span className="text-xs font-semibold text-slate-700">
+                        {selectedProductDetail.expiryDate || "Infinite Lifecycle"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 5. Logs & System Fields */}
+                <div className="space-y-3">
+                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest pb-1 border-b border-slate-100">
+                    System Registry Logs
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Registered At</span>
+                      <span className="text-[11px] font-mono font-medium text-slate-400">
+                        {selectedProductDetail.createdAt ? new Date(selectedProductDetail.createdAt).toLocaleString() : "--"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Last Updated</span>
+                      <span className="text-[11px] font-mono font-medium text-slate-400">
+                        {selectedProductDetail.updatedAt ? new Date(selectedProductDetail.updatedAt).toLocaleString() : "--"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer Actions */}
+              <div className="p-6 border-t border-slate-100 bg-slate-50 flex flex-wrap gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAdjustmentData({
+                      productId: selectedProductDetail.id,
+                      quantity: selectedProductDetail.quantity,
+                      reason: "manual",
+                      customReason: "",
+                    });
+                    setIsAdjustingStock(true);
+                    setSelectedProductDetail(null);
+                  }}
+                  className="flex-1 min-w-[120px] h-11 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-slate-50 transition-all shadow-sm"
+                >
+                  Adjust Stock
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTransferData({
+                      productId: selectedProductDetail.id,
+                      transferType: "out",
+                      otherBranchId: BRANCHES.find(b => b.id !== (selectedProductDetail.warehouseId || "main-wh"))?.id || BRANCHES[0].id,
+                      quantity: 1,
+                      subtractSource: true,
+                      addDestination: true,
+                      notes: `Inter-branch stock balancing for ${selectedProductDetail.name}`,
+                    });
+                    setIsTransferringStock(true);
+                    setSelectedProductDetail(null);
+                  }}
+                  className="flex-1 min-w-[125px] h-11 bg-indigo-50 border border-indigo-100 text-indigo-700 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-indigo-100 transition-all"
+                >
+                  Transfer Stock
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedProductDetail(null)}
+                  className="w-full h-11 bg-slate-800 text-white rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-slate-900 transition-all shadow-md shadow-slate-800/10 mt-1"
+                >
+                  Close Details
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {isAdjustingStock && (
@@ -658,6 +1165,195 @@ export function Inventory() {
       </AnimatePresence>
 
       <AnimatePresence>
+        {isTransferringStock && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 10 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 10 }}
+              className="bg-white w-full max-w-lg rounded-2xl border border-slate-200 shadow-2xl flex flex-col"
+            >
+              <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-extrabold text-slate-900 leading-tight">
+                    Stock Transfer
+                  </h3>
+                  <p className="text-xs text-slate-400 font-bold mt-0.5 uppercase tracking-widest">
+                    In / Out Branch Movement
+                  </p>
+                </div>
+                <button
+                  onClick={() => setIsTransferringStock(false)}
+                  className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition-all"
+                >
+                  <X className="w-6 h-6 animate-none" />
+                </button>
+              </div>
+
+              <form onSubmit={handleTransferStock} className="p-6 space-y-4">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">
+                    1. Select Inventory Product
+                  </label>
+                  <select
+                    required
+                    className="w-full h-11 bg-slate-50 border border-slate-100 rounded-lg px-4 text-sm font-medium outline-none focus:border-blue-500 focus:bg-white transition-all appearance-none text-slate-800"
+                    value={transferData.productId}
+                    onChange={(e) => {
+                      const prodId = e.target.value;
+                      const prod = products.find(p => p.id === prodId);
+                      setTransferData({
+                        ...transferData,
+                        productId: prodId,
+                        otherBranchId: BRANCHES.find(b => b.id !== (prod?.warehouseId || "main-wh"))?.id || BRANCHES[0].id
+                      });
+                    }}
+                  >
+                    <option value="" disabled>-- Choose a Product --</option>
+                    {products.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} ({p.sku}) — {BRANCHES.find(b => b.id === (p.warehouseId || "main-wh"))?.name || BRANCHES[0].name} [{p.quantity} left]
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">
+                      2. Transfer Direction
+                    </label>
+                    <select
+                      className="w-full h-11 bg-slate-50 border border-slate-100 rounded-lg px-4 text-sm font-medium outline-none focus:border-blue-500 focus:bg-white transition-all appearance-none text-slate-800"
+                      value={transferData.transferType}
+                      onChange={(e) =>
+                        setTransferData({
+                          ...transferData,
+                          transferType: e.target.value as "in" | "out",
+                        })
+                      }
+                    >
+                      <option value="out">📤 Move Stock Out (Send)</option>
+                      <option value="in">📥 Move Stock In (Receive)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">
+                      3. Target/Source Branch
+                    </label>
+                    <select
+                      className="w-full h-11 bg-slate-50 border border-slate-100 rounded-lg px-4 text-sm font-medium outline-none focus:border-blue-500 focus:bg-white transition-all appearance-none text-slate-800"
+                      value={transferData.otherBranchId}
+                      onChange={(e) =>
+                        setTransferData({
+                          ...transferData,
+                          otherBranchId: e.target.value,
+                        })
+                      }
+                    >
+                      {(() => {
+                        const selectedProduct = products.find(p => p.id === transferData.productId);
+                        const productBranchId = selectedProduct?.warehouseId || "main-wh";
+                        const availableBranches = BRANCHES.filter(b => b.id !== productBranchId);
+                        return availableBranches.map((b) => (
+                          <option key={b.id} value={b.id}>
+                            {b.name}
+                          </option>
+                        ));
+                      })()}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">
+                      4. Quantity to Move
+                    </label>
+                    <input
+                      required
+                      type="number"
+                      min="1"
+                      className="w-full h-11 bg-slate-50 border border-slate-100 rounded-lg px-3.5 text-sm font-semibold outline-none focus:border-blue-500 focus:bg-white transition-all text-slate-800"
+                      value={transferData.quantity}
+                      onChange={(e) =>
+                        setTransferData({
+                          ...transferData,
+                          quantity: Math.max(1, parseInt(e.target.value) || 1),
+                        })
+                      }
+                    />
+                  </div>
+
+                  {transferData.transferType === "in" && (
+                    <div className="flex items-center gap-2 pt-5">
+                      <input
+                        id="subtractSource"
+                        type="checkbox"
+                        className="w-4 h-4 text-indigo-600 border-slate-200 rounded focus:ring-indigo-500"
+                        checked={transferData.subtractSource}
+                        onChange={(e) =>
+                          setTransferData({
+                            ...transferData,
+                            subtractSource: e.target.checked,
+                          })
+                        }
+                      />
+                      <label htmlFor="subtractSource" className="text-xs text-slate-500 font-semibold select-none leading-tight cursor-pointer">
+                        Deduct from source branch stock automatically
+                      </label>
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold text-[#64748B] uppercase tracking-widest mb-1.5 block">
+                    Notes / Documentation Reference
+                  </label>
+                  <textarea
+                    className="w-full p-3.5 bg-slate-50 border border-slate-100 rounded-lg text-sm font-medium outline-none focus:border-blue-500 focus:bg-white transition-all placeholder:text-slate-300 resize-none h-20"
+                    placeholder="e.g. Branch stock balancing, Store replenishment..."
+                    value={transferData.notes}
+                    onChange={(e) =>
+                      setTransferData({
+                        ...transferData,
+                        notes: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+
+                <div className="pt-4 border-t border-slate-100 flex gap-3">
+                  <button
+                    type="button"
+                    disabled={isSubmittingTransfer}
+                    onClick={() => setIsTransferringStock(false)}
+                    className="flex-1 h-12 rounded-xl font-bold text-slate-500 hover:bg-slate-50 transition-all text-xs uppercase tracking-widest disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmittingTransfer}
+                    className="flex-[2] h-12 bg-indigo-600 text-white rounded-xl font-bold text-xs uppercase tracking-widest shadow-xl shadow-indigo-600/20 hover:bg-indigo-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {isSubmittingTransfer && <Loader2 className="w-4 h-4 animate-spin text-white" />}
+                    {isSubmittingTransfer ? "Executing..." : "Execute Movement"}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {isAddingProduct && (
           <motion.div
             initial={{ opacity: 0 }}
@@ -732,6 +1428,27 @@ export function Inventory() {
                       <option>Raw Materials</option>
                       <option>Safety Gear</option>
                       <option>Components</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">
+                      Initial Store / Warehouse Branch
+                    </label>
+                    <select
+                      className="w-full h-11 bg-slate-50 border border-slate-100 rounded-lg px-4 text-sm font-medium outline-none focus:border-blue-500 focus:bg-white transition-all appearance-none text-slate-800"
+                      value={newProduct.warehouseId || "main-wh"}
+                      onChange={(e) =>
+                        setNewProduct({
+                          ...newProduct,
+                          warehouseId: e.target.value,
+                        })
+                      }
+                    >
+                      {BRANCHES.map((b) => (
+                        <option key={b.id} value={b.id}>
+                          {b.name}
+                        </option>
+                      ))}
                     </select>
                   </div>
                   <div>
@@ -814,6 +1531,55 @@ export function Inventory() {
                         })
                       }
                     />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">
+                      Base Unit of Measure (UoM)
+                    </label>
+                    <select
+                      className="w-full h-11 bg-slate-50 border border-slate-100 rounded-lg px-4 text-sm font-medium outline-none focus:border-blue-500 focus:bg-white transition-all appearance-none text-slate-800"
+                      value={newProduct.uom || "Piece"}
+                      onChange={(e) =>
+                        setNewProduct({
+                          ...newProduct,
+                          uom: e.target.value,
+                        })
+                      }
+                    >
+                      <option value="Piece">Piece (pcs)</option>
+                      <option value="kg">Kilogram (kg)</option>
+                      <option value="Gram">Gram (g)</option>
+                      <option value="Liter">Liter (L)</option>
+                      <option value="ml">Milliliter (mL)</option>
+                      <option value="Meter">Meter (m)</option>
+                      <option value="Yard">Yard (yd)</option>
+                      <option value="Box">Box (box)</option>
+                      <option value="Pack">Pack (pack)</option>
+                      <option value="Roll">Roll (roll)</option>
+                      <option value="Set">Set (set)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">
+                      Material Group
+                    </label>
+                    <select
+                      className="w-full h-11 bg-slate-50 border border-slate-100 rounded-lg px-4 text-sm font-medium outline-none focus:border-blue-500 focus:bg-white transition-all appearance-none text-slate-800"
+                      value={newProduct.materialGroup || "Finished Goods"}
+                      onChange={(e) =>
+                        setNewProduct({
+                          ...newProduct,
+                          materialGroup: e.target.value,
+                        })
+                      }
+                    >
+                      <option value="Raw Materials">Raw Materials</option>
+                      <option value="Finished Goods">Finished Goods</option>
+                      <option value="Semi-Finished Goods">Semi-Finished Goods</option>
+                      <option value="Packaging Materials">Packaging Materials</option>
+                      <option value="Spare Parts">Spare Parts</option>
+                      <option value="Consumables">Consumables</option>
+                    </select>
                   </div>
                 </div>
 
@@ -1150,8 +1916,34 @@ export function Inventory() {
         </div>
       </div>
 
-      {/* Products Display */}
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+      {/* View Switcher: Active Stock vs. Transfer & Movement Journal */}
+      <div className="flex border-b border-slate-200 mb-6 bg-slate-50/50 p-1.5 rounded-xl border">
+        <button
+          onClick={() => setActiveInventoryTab("stock")}
+          className={cn(
+            "flex-1 py-2.5 text-xs font-black uppercase tracking-widest rounded-lg transition-all flex items-center justify-center gap-2",
+            activeInventoryTab === "stock"
+              ? "bg-white text-blue-600 shadow-sm border border-slate-100 font-extrabold"
+              : "text-slate-400 hover:text-slate-600 font-bold"
+          )}
+        >
+          📦 Active Inventory
+        </button>
+        <button
+          onClick={() => setActiveInventoryTab("transfers")}
+          className={cn(
+            "flex-1 py-2.5 text-xs font-black uppercase tracking-widest rounded-lg transition-all flex items-center justify-center gap-2",
+            activeInventoryTab === "transfers"
+              ? "bg-white text-indigo-600 shadow-sm border border-slate-100 font-extrabold"
+              : "text-slate-400 hover:text-slate-600 font-bold"
+          )}
+        >
+          🔄 Transfers & Movements Log
+        </button>
+      </div>
+
+      {activeInventoryTab === "stock" && (
+        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
         <div className="hidden lg:grid grid-cols-[1.2fr_100px_100px_80px_110px_130px_110px_100px_90px] gap-4 px-8 py-4 bg-slate-50 border-b border-slate-100 text-[10px] font-black uppercase tracking-widest text-slate-400">
           <div>Inventory Record</div>
           <div>SKU ID</div>
@@ -1224,6 +2016,15 @@ export function Inventory() {
                             Mfg: {product.manufactureDate}
                           </span>
                         )}
+                        <span className="text-indigo-600 bg-indigo-50 px-1 rounded-sm text-[8px] font-black uppercase tracking-wider border border-indigo-100/30 leading-none">
+                          📍 {BRANCHES.find(b => b.id === (product.warehouseId || "main-wh"))?.name || BRANCHES[0].name}
+                        </span>
+                        <span className="text-teal-600 bg-teal-50 px-1 rounded-sm text-[8px] font-black uppercase tracking-wider border border-teal-100/30 leading-none">
+                          ⚖️ UoM: {product.uom || "Piece"}
+                        </span>
+                        <span className="text-pink-600 bg-pink-50 px-1 rounded-sm text-[8px] font-black uppercase tracking-wider border border-pink-100/30 leading-none">
+                          📂 {product.materialGroup || "Finished Goods"}
+                        </span>
                       </p>
                     </div>
                   </div>
@@ -1311,6 +2112,17 @@ export function Inventory() {
                       <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest truncate">
                         {product.sku} • {product.category}
                       </p>
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        <span className="text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider border border-indigo-100/30 shrink-0">
+                          📍 {BRANCHES.find(b => b.id === (product.warehouseId || "main-wh"))?.name || BRANCHES[0].name}
+                        </span>
+                        <span className="text-teal-600 bg-teal-50 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider border border-teal-100/30 shrink-0">
+                          ⚖️ UoM: {product.uom || "Piece"}
+                        </span>
+                        <span className="text-pink-600 bg-pink-50 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider border border-pink-100/30 shrink-0">
+                          📂 {product.materialGroup || "Finished Goods"}
+                        </span>
+                      </div>
 
                       {product.expiryDate && (
                         <div className="mt-2 flex items-center gap-1.5 leading-none">
@@ -1378,7 +2190,10 @@ export function Inventory() {
                     <span className="text-[10px] font-medium text-slate-400 italic">
                       Recorded: {product.lastSold}
                     </span>
-                    <button className="text-[9px] font-bold text-blue-600 uppercase tracking-widest px-4 py-2 bg-blue-50 rounded-lg border border-blue-100 transition-colors active:bg-blue-100">
+                    <button
+                      onClick={() => setSelectedProductDetail(product)}
+                      className="text-[9px] font-bold text-blue-600 uppercase tracking-widest px-4 py-2 bg-blue-50 rounded-lg border border-blue-100 transition-colors active:bg-blue-100"
+                    >
                       View Details
                     </button>
                   </div>
@@ -1396,6 +2211,102 @@ export function Inventory() {
           )}
         </div>
       </div>
+      )}
+
+      {activeInventoryTab === "transfers" && (
+        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+          <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+            <div>
+              <h4 className="text-base font-bold text-slate-900">Transfers & Movements Log</h4>
+              <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider mt-0.5">Tracking stock dispatching and reception across branches</p>
+            </div>
+            <button
+              onClick={() => setIsTransferringStock(true)}
+              className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-bold transition-all"
+            >
+              <ArrowUpDown className="rotate-90 w-3.5 h-3.5" />
+              New Transfer
+            </button>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-100 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  <th className="px-6 py-4">Timestamp</th>
+                  <th className="px-6 py-4">Product Details</th>
+                  <th className="px-6 py-4">Transfer Action</th>
+                  <th className="px-6 py-4">Routing Path</th>
+                  <th className="px-6 py-4 text-right font-black">Quantity</th>
+                  <th className="px-6 py-4">Authorized By</th>
+                  <th className="px-6 py-4">Notes / Reference</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {movementsLoading ? (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-12 text-center text-xs text-slate-400 font-medium">
+                      Loading movements log from database...
+                    </td>
+                  </tr>
+                ) : movements.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-12 text-center text-xs text-slate-400 font-medium">
+                      No stock transfers recorded yet. Click "New Transfer" to initiate a branch movement.
+                    </td>
+                  </tr>
+                ) : (
+                  movements.map((mov: any) => {
+                    const isTransferIn = mov.transferType === "in";
+                    return (
+                      <tr key={mov.id} className="hover:bg-slate-50/50 transition-colors text-xs font-medium text-slate-600">
+                        <td className="px-6 py-4 font-mono text-slate-400">
+                          {mov.createdAt ? new Date(mov.createdAt).toLocaleString() : "--"}
+                        </td>
+                        <td className="px-6 py-4 font-bold text-slate-900">
+                          <div>{mov.productName || "Unknown Product"}</div>
+                          <div className="text-[10px] text-slate-400 font-mono mt-0.5">SKU: {mov.sku}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={cn(
+                            "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border shadow-sm",
+                            isTransferIn 
+                              ? "bg-teal-50 text-teal-600 border-teal-100" 
+                              : "bg-indigo-50 text-indigo-600 border-indigo-100"
+                          )}>
+                            {isTransferIn ? "📥 Transfer In" : "📤 Transfer Out"}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-1.5 font-semibold text-[11px]">
+                            <span className="text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+                              {BRANCHES.find(b => b.id === mov.sourceWarehouseId)?.name || mov.sourceWarehouseId || "Current Branch"}
+                            </span>
+                            <span className="text-slate-300">➔</span>
+                            <span className="text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">
+                              {BRANCHES.find(b => b.id === mov.destWarehouseId)?.name || mov.destWarehouseId || "Target Branch"}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-right font-extrabold text-slate-900 text-sm">
+                          {mov.quantity?.toLocaleString() || 0} units
+                        </td>
+                        <td className="px-6 py-4 text-slate-500 font-semibold truncate max-w-[120px]">
+                          {mov.createdBy || "System"}
+                        </td>
+                        <td className="px-6 py-4 text-slate-400 italic max-w-[200px] truncate" title={mov.reason}>
+                          {mov.reason || "Inter-branch balance adjustment"}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       <ConfirmationModal
         isOpen={confirmConfig.isOpen}
         title={confirmConfig.title}

@@ -64,7 +64,6 @@ const menuItems = [
   { id: "inventory" as ViewType, label: "Inventory", icon: Package },
   { id: "categories" as ViewType, label: "Categories", icon: Grid3X3 },
   { id: "warehouses" as ViewType, label: "Warehouses", icon: Warehouse },
-  { id: "inventory_pro_chat" as ViewType, label: "Inventory Pro (AI)", icon: Sparkles },
 ];
 
 const menuGroups = [
@@ -564,7 +563,7 @@ export function BottomNav({
 }) {
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 md:hidden flex items-center justify-between px-2 pb-safe z-40 h-16 sm:h-20 shadow-[0_-1px_10px_rgba(0,0,0,0.05)]">
-      {menuItems.map((item) => (
+      {menuItems.filter((item) => item.id !== "inventory_pro_chat").map((item) => (
         <button
           key={item.id}
           onClick={() => onViewChange(item.id)}
