@@ -239,7 +239,7 @@ function AppContent() {
       />
       
       <div className={cn(
-        "transition-all duration-300 min-h-screen flex flex-col min-w-0 overflow-x-hidden",
+        "transition-all duration-300 min-h-screen flex flex-col min-w-0 overflow-x-clip",
         isSidebarCollapsed ? "md:pl-[64px]" : "md:pl-[260px]",
         "pl-0"
       )}>
