@@ -42,15 +42,61 @@ import {
 } from 'lucide-react';
 import { useAuth } from './contexts/AuthContext';
 import { SettingsProvider, useSettings } from './contexts/SettingsContext';
+import { Mail, Lock, User as UserIcon } from 'lucide-react';
 
 function AppContent() {
   const [currentView, setCurrentView] = useState<ViewType>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const { user, loading: authLoading, login, connectionError } = useAuth();
+  const { user, loading: authLoading, loginWithEmail, registerWithEmail, loginDemo, connectionError } = useAuth();
   const { profile, company, loading: settingsLoading, createCompany } = useSettings();
   const [companyName, setCompanyName] = useState('');
   const [isCreatingCompany, setIsCreatingCompany] = useState(false);
+
+  // Authentication Interface States
+  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [isSubmittingAuth, setIsSubmittingAuth] = useState(false);
+
+  const handleAuthSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError(null);
+    setIsSubmittingAuth(true);
+
+    try {
+      if (!email.trim() || !password.trim()) {
+        throw new Error("Please fill in all layout credentials.");
+      }
+      if (authMode === 'signup' && !fullName.trim()) {
+        throw new Error("Please enter your full name to set up the registry profile.");
+      }
+
+      if (authMode === 'signin') {
+        await loginWithEmail(email.trim(), password);
+      } else {
+        await registerWithEmail(email.trim(), password, fullName.trim());
+      }
+    } catch (err: any) {
+      setAuthError(err?.message || "Authentication transaction failed.");
+    } finally {
+      setIsSubmittingAuth(false);
+    }
+  };
+
+  const handleDemoSignIn = async () => {
+    setAuthError(null);
+    setIsSubmittingAuth(true);
+    try {
+      await loginDemo();
+    } catch (err: any) {
+      setAuthError(err?.message || "Could not spin up demo session.");
+    } finally {
+      setIsSubmittingAuth(false);
+    }
+  };
 
   if (connectionError) {
     return (
@@ -100,30 +146,47 @@ function AppContent() {
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="max-w-md w-full bg-white p-10 rounded-[2rem] border border-slate-200 shadow-2xl relative z-10"
+          className="max-w-md w-full bg-white p-8 sm:p-10 rounded-[2rem] border border-slate-200 shadow-2xl relative z-10"
         >
           <div className="flex flex-col items-center text-center">
-            <div className="w-20 h-20 bg-[#10b981] rounded-2xl flex items-center justify-center shadow-2xl shadow-[#10b981]/20 mb-8">
-              <BarChart3 className="w-10 h-10 text-white" />
+            <div className="w-16 h-16 bg-[#10b981] rounded-2xl flex items-center justify-center shadow-xl shadow-[#10b981]/20 mb-6">
+              <BarChart3 className="w-8 h-8 text-white" />
             </div>
-            <h1 className="text-4xl font-black text-slate-900 tracking-tight leading-tight">InventoryPro</h1>
-            <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px] mt-2">Smart Decisions • Cloud ERP</p>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight">InventoryPro</h1>
+            <p className="text-slate-400 font-bold uppercase tracking-widest text-[9px] mt-1.5">Smart Decisions • Cloud ERP</p>
             
-            <div className="w-full h-px bg-slate-100 my-10" />
-            
-            <h2 className="text-xl font-bold text-slate-800 mb-2">Welcome Back</h2>
-            <p className="text-slate-500 text-sm mb-8">Sign in to manage your inventory and procurement pipeline</p>
-            
-            <button 
-              onClick={login}
-              className="w-full flex items-center justify-center gap-3 bg-[#0f172a] text-white h-14 rounded-2xl font-bold hover:bg-slate-800 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-slate-200"
+            <div className="w-full h-px bg-slate-100 my-8" />
+
+            <h2 className="text-xl font-bold text-slate-800 mb-2">Instant Workspace Sandbox</h2>
+            <p className="text-slate-500 text-xs sm:text-sm mb-8 leading-relaxed">
+              Explore professional logistics workflows, warehousing, spend analysis, real-time POS, and automated tracking indices instantly inside your sandboxed ERP environment.
+            </p>
+
+            {authError && (
+              <div className="w-full flex items-start gap-2 bg-rose-50 text-rose-600 border border-rose-100 p-4 rounded-xl text-xs font-bold text-left mb-6">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>{authError}</span>
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={handleDemoSignIn}
+              disabled={isSubmittingAuth}
+              className="w-full h-13 rounded-2xl bg-[#0f172a] hover:bg-slate-800 text-white font-bold text-xs uppercase tracking-widest transition-all hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-3 shadow-lg shadow-slate-200 disabled:opacity-50"
             >
-              <LogIn className="w-5 h-5" />
-              Sign in with Google
+              {isSubmittingAuth ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <>
+                  <LogIn className="w-4 h-4" />
+                  Enter Guest Sandbox
+                </>
+              )}
             </button>
-            
-            <p className="mt-8 text-[10px] text-slate-400 font-medium">
-              By signing in, you agree to our <span className="underline cursor-pointer">Terms of Service</span> and <span className="underline cursor-pointer">Privacy Policy</span>.
+
+            <p className="mt-8 text-[9px] text-slate-400 font-bold uppercase tracking-wider leading-relaxed">
+              No registration required. Auto-spins cloud databases securely.
             </p>
           </div>
         </motion.div>

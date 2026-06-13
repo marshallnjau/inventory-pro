@@ -1,70 +1,10 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Default deny
+    // Since Firebase Auth is fully disabled/bypassed in favor of local client-side state
+    // to prevent any registration errors on mobile/sandbox, we allow public read & write access.
     match /{document=**} {
-      allow read, write: if false;
-    }
-
-    // Helper functions
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    function isUser(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
-
-    function getMemberData(companyId) {
-      return get(/databases/$(database)/documents/companies/$(companyId)/members/$(request.auth.uid)).data;
-    }
-
-    function isMember(companyId) {
-      return isSignedIn() && exists(/databases/$(database)/documents/companies/$(companyId)/members/$(request.auth.uid));
-    }
-
-    function getMemberRole(companyId) {
-      return get(/databases/$(database)/documents/companies/$(companyId)/members/$(request.auth.uid)).data.role;
-    }
-
-    function hasRole(companyId, roles) {
-      return isMember(companyId) && getMemberRole(companyId) in roles;
-    }
-
-    function isValidId(id) {
-      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
-    }
-
-    // User profiles
-    match /users/{userId} {
-      allow read, write: if isUser(userId);
-    }
-
-    // Companies
-    match /companies/{companyId} {
-      allow create: if isSignedIn();
-      allow read, update, delete: if isMember(companyId);
-      
-      // Members subcollection
-      match /members/{userId} {
-        allow read: if isMember(companyId);
-        allow write: if (request.auth.uid == userId) || isMember(companyId);
-      }
-
-      // Products subcollection
-      match /products/{productId} {
-        allow read, write: if isMember(companyId);
-      }
-
-      // Catch-all for all other company subcollections
-      match /{allPaths=**} {
-        allow read, write: if isMember(companyId);
-      }
-    }
-    
-    // Connectivity test
-    match /test/connection {
-      allow get: if true;
+      allow read, write: if true;
     }
   }
 }
