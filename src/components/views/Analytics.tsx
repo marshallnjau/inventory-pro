@@ -4,7 +4,7 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
   PieChart, Pie, Cell, BarChart, Bar, LineChart, Line, ScatterChart, Scatter, ZAxis, Legend
 } from 'recharts';
-import { cn, formatCompactNumber } from '../../lib/utils';
+import { cn, formatCompactNumber, getSellThroughRate } from '../../lib/utils';
 import { TrendingUp, DollarSign, Package, BarChart3, Calendar, RotateCcw, FileDown, Activity, MousePointer2, Clock, Ban } from 'lucide-react';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
@@ -43,6 +43,15 @@ export function Analytics() {
   
   const totalCapital = allProducts.reduce((sum, p) => sum + (p.value * p.quantity), 0);
   const totalSKUs = allProducts.length;
+
+  const totalUnitsSold = allProducts.reduce((sum, p) => sum + (p.unitsSold || 0), 0);
+  const totalUnitsReceived = allProducts.reduce((sum, p) => {
+    const received = typeof p.unitsReceived === 'number' && p.unitsReceived > 0
+      ? p.unitsReceived 
+      : p.quantity + (p.unitsSold || 0);
+    return sum + received;
+  }, 0);
+  const averageSTR = totalUnitsReceived > 0 ? (totalUnitsSold / totalUnitsReceived) * 100 : 0;
   
   const categoryStats = allProducts.reduce((acc: any[], p) => {
     const existing = acc.find(c => c.name === p.category);
@@ -144,7 +153,7 @@ export function Analytics() {
       </div>
 
       {/* Mini Stat Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-6">
         <div className="bg-white p-3 sm:p-4 md:p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-2 sm:gap-4">
           <div className="w-8 h-8 sm:w-12 sm:h-12 bg-emerald-50 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0">
             <TrendingUp className="w-4 h-4 sm:w-6 sm:h-6 text-emerald-500" />
@@ -161,7 +170,7 @@ export function Analytics() {
           </div>
           <div className="text-left min-w-0">
             <p className="text-xs sm:text-base md:text-lg font-bold text-slate-900 leading-none truncate">{formatCompactNumber(totalCapital, currency)}</p>
-            <p className="text-[8px] sm:text-[10px] md:text-xs font-medium text-slate-400 mt-0.5 sm:mt-1.5 leading-tight truncate">Total Value</p>
+            <p className="text-[8px] sm:text-[10px] md:text-xs font-bold text-slate-400 mt-0.5 sm:mt-1.5 leading-tight truncate">Total Value</p>
           </div>
         </div>
         <div className="bg-white p-3 sm:p-4 md:p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-2 sm:gap-4">
@@ -180,6 +189,15 @@ export function Analytics() {
           <div className="text-left min-w-0">
             <p className="text-xs sm:text-base md:text-lg font-bold text-slate-900 leading-none truncate">87%</p>
             <p className="text-[8px] sm:text-[10px] md:text-xs font-medium text-slate-400 mt-0.5 sm:mt-1.5 leading-tight truncate">Fill Rate</p>
+          </div>
+        </div>
+        <div className="bg-white p-3 sm:p-4 md:p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-2 sm:gap-4 text-left col-span-2 md:col-span-1">
+          <div className="w-8 h-8 sm:w-12 sm:h-12 bg-blue-50 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0">
+            <TrendingUp className="w-4 h-4 sm:w-6 sm:h-6 text-blue-500" />
+          </div>
+          <div className="text-left min-w-0">
+            <p className="text-xs sm:text-base md:text-lg font-bold text-slate-900 leading-none truncate font-mono">{averageSTR.toFixed(1)}%</p>
+            <p className="text-[8px] sm:text-[10px] md:text-xs font-medium text-slate-400 mt-0.5 sm:mt-1.5 leading-tight truncate">Sell-Through Rate</p>
           </div>
         </div>
       </div>
@@ -477,6 +495,58 @@ export function Analytics() {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* Sell-Through Rate (STR) Performance */}
+        <div className="bg-white p-6 md:p-8 rounded-2xl border border-slate-200 shadow-sm text-left flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="text-lg font-extrabold text-slate-900">STR Performance Card</h3>
+                <p className="text-xs font-medium text-slate-400 mt-0.5">Percentage of inventory sold compared to received</p>
+              </div>
+              <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-2 py-1 rounded-md uppercase tracking-widest border border-blue-100/30">
+                Formula Match
+              </span>
+            </div>
+
+            <div className="space-y-5">
+              {[...allProducts]
+                .map(p => ({
+                  ...p,
+                  str: getSellThroughRate(p)
+                }))
+                .sort((a, b) => b.str - a.str)
+                .slice(0, 5)
+                .map((p, idx) => (
+                  <div key={idx} className="space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-bold text-slate-800 truncate max-w-[180px]">{p.name}</span>
+                      <span className="font-extrabold text-slate-950 font-mono">{p.str.toFixed(1)}%</span>
+                    </div>
+                    <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                      <div 
+                        className={cn(
+                          "h-full rounded-full transition-all duration-500",
+                          p.str >= 70 ? "bg-emerald-500" : p.str >= 40 ? "bg-blue-500" : "bg-amber-500"
+                        )}
+                        style={{ width: `${Math.min(100, p.str)}%` }}
+                      />
+                    </div>
+                    <div className="flex justify-between items-center text-[10px] font-bold text-slate-400">
+                      <span>Sold: {p.unitsSold || 0} units</span>
+                      <span>Received: {p.unitsReceived || (p.quantity + (p.unitsSold || 0))} units</span>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </div>
+          <div className="pt-4 mt-6 border-t border-slate-100 text-[10px] font-bold text-slate-400 leading-relaxed">
+            Standard Retail Formula: <br />
+            <span className="font-mono bg-slate-100/50 px-1.5 py-0.5 rounded text-blue-600 font-extrabold block mt-1 tracking-wide">
+              STR = (Units Sold / Units Received) × 100
+            </span>
           </div>
         </div>
       </div>

@@ -19,3 +19,13 @@ export function formatCompactNumber(number: number, currency?: string) {
   
   return formatter.format(number);
 }
+
+export function getSellThroughRate(product: { quantity?: number; unitsSold?: number; unitsReceived?: number }) {
+  const sold = typeof product.unitsSold === 'number' ? product.unitsSold : 0;
+  const received = typeof product.unitsReceived === 'number' && product.unitsReceived > 0
+    ? product.unitsReceived 
+    : (product.quantity || 0) + sold;
+    
+  if (received <= 0) return 0;
+  return (sold / received) * 100;
+}

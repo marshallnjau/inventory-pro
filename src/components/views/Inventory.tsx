@@ -32,7 +32,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useSettings } from "../../contexts/SettingsContext";
 import { MOCK_PRODUCTS } from "../../constants";
 import { seedSampleData } from "../../services/sampleDataService";
-import { cn, formatCompactNumber } from "../../lib/utils";
+import { cn, formatCompactNumber, getSellThroughRate } from "../../lib/utils";
 import { motion, AnimatePresence } from "motion/react";
 import { MovementSpeed, Product } from "../../types";
 import { ConfirmationModal } from "../ConfirmationModal";
@@ -180,6 +180,8 @@ export function Inventory() {
     expiryDate: "",
     manufactureDate: "",
     batchNumber: "",
+    unitsSold: 0,
+    unitsReceived: 0,
     warehouseId: "main-wh",
     uom: "Piece",
     materialGroup: "Finished Goods",
@@ -510,6 +512,10 @@ export function Inventory() {
       const productData = {
         ...newProduct,
         id: productId,
+        unitsReceived: typeof newProduct.unitsReceived === 'number' && newProduct.unitsReceived > 0 
+          ? newProduct.unitsReceived 
+          : (newProduct.quantity || 0),
+        unitsSold: typeof newProduct.unitsSold === 'number' ? newProduct.unitsSold : 0,
         lastSold: new Date().toISOString().split("T")[0],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -547,6 +553,8 @@ export function Inventory() {
         expiryDate: "",
         manufactureDate: "",
         batchNumber: "",
+        unitsSold: 0,
+        unitsReceived: 0,
         warehouseId: "main-wh",
         uom: "Piece",
         materialGroup: "Finished Goods",
@@ -862,6 +870,46 @@ export function Inventory() {
                     )}>
                       {selectedProductDetail.movement || "moderate"}
                     </span>
+                  </div>
+
+                  {/* STR Info block */}
+                  <div className="pt-2 border-t border-slate-100 col-span-2 flex flex-col gap-1">
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">
+                      Sell-Through Metric (STR)
+                    </span>
+                    {(() => {
+                      const str = getSellThroughRate(selectedProductDetail);
+                      const sold = selectedProductDetail.unitsSold || 0;
+                      const received = selectedProductDetail.unitsReceived || (selectedProductDetail.quantity + sold);
+                      return (
+                        <div className="bg-white p-2.5 rounded-lg border border-slate-150 flex flex-col gap-1.5 mt-0.5">
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="font-bold text-slate-700">Sell-Through Rate:</span>
+                            <span className={cn(
+                              "font-black font-mono px-2 py-0.5 rounded text-[10px]",
+                              str >= 70 ? "bg-emerald-50 text-emerald-600 border border-emerald-100" :
+                              str >= 40 ? "bg-blue-50 text-blue-600 border border-blue-100" :
+                              "bg-amber-50 text-amber-600 border border-amber-100"
+                            )}>
+                              {str.toFixed(1)}%
+                            </span>
+                          </div>
+                          <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div 
+                              className={cn(
+                                "h-full rounded-full transition-all duration-300",
+                                str >= 70 ? "bg-emerald-500" : str >= 40 ? "bg-blue-500" : "bg-amber-500"
+                              )}
+                              style={{ width: `${Math.min(100, str)}%` }}
+                            />
+                          </div>
+                          <div className="flex justify-between text-[9px] font-bold text-slate-400 mt-0.5">
+                            <span>Sold: <span className="text-slate-800">{sold} units</span></span>
+                            <span>Received: <span className="text-slate-800">{received} units</span></span>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
 
@@ -1469,6 +1517,40 @@ export function Inventory() {
                   </div>
                   <div>
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">
+                      Initial Units Received
+                    </label>
+                    <input
+                      type="number"
+                      className="w-full h-11 bg-slate-50 border border-slate-100 rounded-lg px-4 text-sm font-medium outline-none focus:border-blue-500 focus:bg-white transition-all font-semibold"
+                      placeholder="Defaults to stock count"
+                      value={newProduct.unitsReceived || ""}
+                      onChange={(e) =>
+                        setNewProduct({
+                          ...newProduct,
+                          unitsReceived: parseInt(e.target.value) || 0,
+                        })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">
+                      Historical Units Sold
+                    </label>
+                    <input
+                      type="number"
+                      className="w-full h-11 bg-slate-50 border border-slate-100 rounded-lg px-4 text-sm font-medium outline-none focus:border-blue-500 focus:bg-white transition-all"
+                      placeholder="e.g. 10"
+                      value={newProduct.unitsSold || ""}
+                      onChange={(e) =>
+                        setNewProduct({
+                          ...newProduct,
+                          unitsSold: parseInt(e.target.value) || 0,
+                        })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">
                       Value ({currency})
                     </label>
                     <input
@@ -1944,12 +2026,13 @@ export function Inventory() {
 
       {activeInventoryTab === "stock" && (
         <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-        <div className="hidden lg:grid grid-cols-[1.2fr_100px_100px_80px_110px_130px_110px_100px_90px] gap-4 px-8 py-4 bg-slate-50 border-b border-slate-100 text-[10px] font-black uppercase tracking-widest text-slate-400">
+        <div className="hidden lg:grid grid-cols-[1.2fr_100px_100px_80px_105px_80px_110px_100px_100px_80px] gap-4 px-8 py-4 bg-slate-50 border-b border-slate-100 text-[10px] font-black uppercase tracking-widest text-slate-400">
           <div>Inventory Record</div>
           <div>SKU ID</div>
           <div>Category</div>
           <div className="text-right">Units</div>
           <div className="text-right">Valuation</div>
+          <div className="text-center">STR</div>
           <div className="text-center">Expiry Date</div>
           <div className="text-center">Days left</div>
           <div className="text-center">Status</div>
@@ -1995,7 +2078,10 @@ export function Inventory() {
             return (
               <React.Fragment key={product.id}>
                 {/* Desktop Row */}
-                <div className="hidden lg:grid grid-cols-[1.2fr_100px_100px_80px_110px_130px_110px_100px_90px] gap-4 px-8 py-5 items-center group hover:bg-slate-50 transition-all text-left">
+                <div 
+                  onClick={() => setSelectedProductDetail(product)}
+                  className="hidden lg:grid grid-cols-[1.2fr_100px_100px_80px_105px_80px_110px_100px_100px_80px] gap-4 px-8 py-5 items-center group cursor-pointer hover:bg-slate-50 transition-all text-left"
+                >
                   <div className="flex items-center gap-4 text-left">
                     <div className="w-10 h-10 bg-slate-50 rounded-lg flex items-center justify-center text-slate-400 group-hover:text-blue-600 group-hover:bg-white transition-all border border-slate-100 group-hover:border-blue-200 group-hover:shadow-sm">
                       <Package className="w-5 h-5" />
@@ -2049,6 +2135,21 @@ export function Inventory() {
                   <div className="text-right font-extrabold text-slate-900 text-xs">
                     {currency} {product.value.toLocaleString()}
                   </div>
+                  <div className="text-center font-extrabold font-mono text-xs">
+                    {(() => {
+                      const str = getSellThroughRate(product);
+                      return (
+                        <span className={cn(
+                          "px-2 py-0.5 rounded-full font-bold text-[10px]",
+                          str >= 70 ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : 
+                          str >= 40 ? "bg-blue-50 text-blue-600 border border-blue-100" : 
+                          "bg-amber-50 text-amber-600 border border-amber-100"
+                        )}>
+                          {str.toFixed(1)}%
+                        </span>
+                      );
+                    })()}
+                  </div>
                   <div className="text-center font-bold text-xs text-slate-700 font-mono">
                     {expiryLabel}
                   </div>
@@ -2078,7 +2179,10 @@ export function Inventory() {
                   </div>
                   <div className="flex justify-center">
                     <button
-                      onClick={() => handleDeleteProduct(product.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteProduct(product.id);
+                      }}
                       title="Dispose expired item"
                       className="p-2 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg border border-transparent hover:border-rose-100 transition-all"
                     >
