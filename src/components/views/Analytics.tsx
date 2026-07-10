@@ -35,11 +35,6 @@ export function Analytics() {
 
   // Dynamic Metrics Calculation
   const allProducts = [...products];
-  MOCK_PRODUCTS.forEach(mock => {
-    if (!products.some(p => p.sku === mock.sku)) {
-      allProducts.push(mock);
-    }
-  });
   
   const totalCapital = allProducts.reduce((sum, p) => sum + (p.value * p.quantity), 0);
   const totalSKUs = allProducts.length;

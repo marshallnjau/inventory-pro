@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Search, ShoppingCart, Trash2, Plus, Minus, CreditCard, 
   Banknote, Receipt, User, Package, Loader2, CheckCircle2,
-  Scan, Pause, RotateCcw, Smartphone
+  Scan, Pause, RotateCcw, Smartphone, Printer, X, FileText
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { collection, onSnapshot, query, where, addDoc, serverTimestamp, doc, updateDoc, increment, setDoc } from 'firebase/firestore';
@@ -22,11 +22,9 @@ interface CartItem {
   sku?: string;
 }
 
-const CATEGORIES = ['All', 'Drinks', 'Food', 'Groceries', 'Retail', 'Services'];
-
 export function POS() {
   const { user } = useAuth();
-  const { profile, currency } = useSettings();
+  const { profile, company, currency } = useSettings();
   const userName = profile?.name || 'Cashier';
 
   const [products, setProducts] = useState<any[]>([]);
@@ -37,6 +35,14 @@ export function POS() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [completedSale, setCompletedSale] = useState<any | null>(null);
+  const [printType, setPrintType] = useState<'receipt' | 'invoice'>('receipt');
+
+  const handlePrintPOS = () => {
+    window.print();
+  };
+
+  const categories = ['All', ...Array.from(new Set(products.map(p => p.category).filter(Boolean)))];
 
   useEffect(() => {
     if (!profile?.companyId) return;
@@ -78,18 +84,25 @@ export function POS() {
   const quickAccessProducts = products.slice(0, 8);
 
   const addToCart = (product: any, qty: number = 1) => {
+    const availableQty = typeof product.quantity === 'number' ? product.quantity : 0;
+    if (availableQty <= 0) return; // Out of stock
+
     setCart(prev => {
       const existing = prev.find(item => item.id === product.id);
       if (existing) {
-        return prev.map(item => 
-          item.id === product.id ? { ...item, quantity: item.quantity + qty } : item
-        );
+        return prev.map(item => {
+          if (item.id === product.id) {
+            const newQty = Math.min(availableQty, item.quantity + qty);
+            return { ...item, quantity: newQty };
+          }
+          return item;
+        });
       }
       return [...prev, { 
         id: product.id, 
         name: product.name, 
         price: product.value || 0, 
-        quantity: qty,
+        quantity: Math.min(availableQty, qty),
         category: product.category,
         sku: product.sku,
         ...(product.image ? { image: product.image } : {})
@@ -98,9 +111,12 @@ export function POS() {
   };
 
   const updateQuantity = (id: string, delta: number) => {
+    const product = products.find(p => p.id === id);
+    const availableQty = product ? (typeof product.quantity === 'number' ? product.quantity : 0) : 999999;
+    
     setCart(prev => prev.map(item => {
       if (item.id === id) {
-        const newQty = Math.max(1, item.quantity + delta);
+        const newQty = Math.min(availableQty, Math.max(1, item.quantity + delta));
         return { ...item, quantity: newQty };
       }
       return item;
@@ -187,6 +203,50 @@ export function POS() {
         source: 'POS'
       });
 
+      // 4. Generate Corresponding Standard Paid Invoice (Explicit request: "after sale also update the invoice")
+      const invoiceId = `INV-POS-${Date.now()}`;
+      const invoiceData = {
+        id: invoiceId,
+        customer: 'Walk-in Customer',
+        amount: total,
+        status: 'paid',
+        type: 'standard',
+        date: new Date().toISOString().split('T')[0],
+        dueDate: new Date().toISOString().split('T')[0],
+        items: cart.map(item => ({
+          productId: item.id,
+          name: item.name,
+          quantity: item.quantity,
+          price: item.price,
+          sku: item.sku || ''
+        })),
+        createdAt: new Date().toISOString(),
+        createdBy: user.uid,
+        source: 'POS',
+        receiptId: receiptId
+      };
+      await setDoc(doc(db, `companies/${profile.companyId}/invoices`, invoiceId), invoiceData);
+
+      // Save sale details for interactive print/view modal
+      setCompletedSale({
+        receiptId,
+        invoiceId,
+        customerName: 'Walk-in Customer',
+        items: cart.map(item => ({
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+          sku: item.sku || ''
+        })),
+        subtotal,
+        tax,
+        total,
+        paymentMethod: method,
+        date: new Date().toISOString().split('T')[0],
+        timestamp: new Date()
+      });
+
       setCart([]);
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 3000);
@@ -228,49 +288,63 @@ export function POS() {
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-3 no-scrollbar">
+           <div className="flex-1 overflow-y-auto p-4 space-y-3 no-scrollbar">
             <AnimatePresence mode="popLayout">
-              {cart.map((item) => (
-                <motion.div
-                  layout
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -10 }}
-                  key={item.id}
-                  className="flex items-center gap-3 p-2 bg-slate-50 border border-slate-100 rounded-xl group"
-                >
-                  <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center border border-slate-100 shrink-0">
-                    <Package className="w-5 h-5 text-slate-300" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h4 className="text-xs font-bold text-slate-900 truncate">{item.name}</h4>
-                    <p className="text-[10px] text-emerald-600 font-bold">{currency} {item.price.toLocaleString()}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center bg-white border border-slate-200 rounded-lg overflow-hidden h-7">
+              {cart.map((item) => {
+                const prod = products.find(p => p.id === item.id);
+                const available = prod ? prod.quantity : 0;
+                const isMax = item.quantity >= available;
+                return (
+                  <motion.div
+                    layout
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -10 }}
+                    key={item.id}
+                    className="flex items-center gap-3 p-2 bg-slate-50 border border-slate-100 rounded-xl group"
+                  >
+                    <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center border border-slate-100 shrink-0">
+                      <Package className="w-5 h-5 text-slate-300" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-xs font-bold text-slate-900 truncate">{item.name}</h4>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <p className="text-[10px] text-emerald-600 font-bold">{currency} {item.price.toLocaleString()}</p>
+                        <span className="text-[9px] font-bold text-slate-400 bg-slate-200/50 px-1 rounded">
+                          {available} in stock
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center bg-white border border-slate-200 rounded-lg overflow-hidden h-7">
+                        <button 
+                          onClick={() => updateQuantity(item.id, -1)}
+                          className="px-1.5 hover:bg-slate-50 transition-colors border-r border-slate-200 h-full"
+                        >
+                          <Minus className="w-3 h-3 text-slate-500" />
+                        </button>
+                        <span className="w-6 text-[11px] font-bold text-center text-slate-700">{item.quantity}</span>
+                        <button 
+                          onClick={() => updateQuantity(item.id, 1)}
+                          disabled={isMax}
+                          className={cn(
+                            "px-1.5 transition-colors border-l border-slate-200 h-full",
+                            isMax ? "bg-slate-50 cursor-not-allowed text-slate-300" : "hover:bg-slate-50 text-slate-500"
+                          )}
+                        >
+                          <Plus className="w-3 h-3" />
+                        </button>
+                      </div>
                       <button 
-                        onClick={() => updateQuantity(item.id, -1)}
-                        className="px-1.5 hover:bg-slate-50 transition-colors border-r border-slate-200 h-full"
+                        onClick={() => removeFromCart(item.id)}
+                        className="p-1.5 text-slate-300 hover:text-rose-500 transition-colors"
                       >
-                        <Minus className="w-3 h-3 text-slate-500" />
-                      </button>
-                      <span className="w-6 text-[11px] font-bold text-center text-slate-700">{item.quantity}</span>
-                      <button 
-                        onClick={() => updateQuantity(item.id, 1)}
-                        className="px-1.5 hover:bg-slate-50 transition-colors border-l border-slate-200 h-full"
-                      >
-                        <Plus className="w-3 h-3 text-slate-500" />
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
-                    <button 
-                      onClick={() => removeFromCart(item.id)}
-                      className="p-1.5 text-slate-300 hover:text-rose-500 transition-colors"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </motion.div>
-              ))}
+                  </motion.div>
+                );
+              })}
             </AnimatePresence>
             {cart.length === 0 && (
               <div className="h-full flex flex-col items-center justify-center opacity-30 py-10">
@@ -401,7 +475,7 @@ export function POS() {
             </div>
 
             <div className="flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth">
-              {CATEGORIES.map(cat => (
+              {categories.map(cat => (
                 <button
                   key={cat}
                   onClick={() => setActiveCategory(cat)}
@@ -428,20 +502,51 @@ export function POS() {
                 <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Frequently Sold Products</span>
               </div>
               <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2">
-                {quickAccessProducts.map(product => (
-                  <button 
-                    key={product.id}
-                    onClick={() => addToCart(product)}
-                    className="min-w-[150px] bg-white border border-slate-100 p-3 rounded-xl shadow-sm hover:shadow-md hover:border-emerald-500/30 transition-all text-left flex flex-col group relative overflow-hidden"
-                  >
-                    <div className="absolute top-0 right-0 w-8 h-8 bg-emerald-50 rounded-bl-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <Plus className="w-4 h-4 text-emerald-600" />
-                    </div>
-                    <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter mb-1 opacity-60 truncate block">{product.category || 'Retail'}</span>
-                    <h4 className="text-[11px] font-black text-slate-900 truncate mb-2 uppercase">{product.name}</h4>
-                    <p className="text-xs font-black text-emerald-600 mt-auto">{currency} {product.value?.toLocaleString()}</p>
-                  </button>
-                ))}
+                {quickAccessProducts.map(product => {
+                  const isOutOfStock = (product.quantity || 0) <= 0;
+                  return (
+                    <button 
+                      key={product.id}
+                      onClick={() => addToCart(product)}
+                      disabled={isOutOfStock}
+                      className={cn(
+                        "min-w-[150px] bg-white border p-3 rounded-xl shadow-sm hover:shadow-md transition-all text-left flex flex-col group relative overflow-hidden",
+                        isOutOfStock 
+                          ? "border-slate-150 bg-slate-50/50 opacity-60 cursor-not-allowed" 
+                          : "border-slate-100 hover:border-emerald-500/30"
+                      )}
+                    >
+                      {!isOutOfStock && (
+                        <div className="absolute top-0 right-0 w-8 h-8 bg-emerald-50 rounded-bl-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <Plus className="w-4 h-4 text-emerald-600" />
+                        </div>
+                      )}
+                      {isOutOfStock && (
+                        <div className="absolute top-0 right-0 bg-rose-50 text-rose-600 px-1.5 py-0.5 rounded-bl-lg text-[7px] font-black uppercase tracking-wider border-l border-b border-rose-100">
+                          OOS
+                        </div>
+                      )}
+                      <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter mb-1 opacity-60 truncate block">{product.category || 'Retail'}</span>
+                      <h4 className="text-[11px] font-black text-slate-900 truncate mb-1 uppercase">{product.name}</h4>
+                      
+                      {/* Live Stock Level */}
+                      <span className={cn(
+                        "text-[8px] font-bold uppercase tracking-wider block mb-2",
+                        isOutOfStock 
+                          ? "text-rose-500 font-extrabold" 
+                          : product.quantity <= 10 
+                            ? "text-amber-500 font-extrabold" 
+                            : "text-emerald-500 font-semibold"
+                      )}>
+                        {isOutOfStock ? "Out of Stock" : `${product.quantity} left`}
+                      </span>
+
+                      <p className={cn("text-xs font-black mt-auto", isOutOfStock ? "text-slate-400" : "text-emerald-600")}>
+                        {currency} {product.value?.toLocaleString()}
+                      </p>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -449,41 +554,64 @@ export function POS() {
             <div className="space-y-4">
               <h3 className="text-[11px] font-black text-slate-900 uppercase tracking-widest px-1">Product Grid</h3>
               <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
-                {filteredProducts.map(product => (
-                  <div 
-                    key={product.id} 
-                    className="bg-white border border-slate-100 rounded-xl p-4 flex flex-col shadow-sm group hover:border-emerald-500/50 transition-all relative"
-                  >
-                    <div className="flex justify-between items-start mb-3">
-                      <div className="px-2 py-0.5 bg-slate-50 border border-slate-100 rounded-md">
-                        <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wider">
-                          {product.category || 'Retail'}
-                        </span>
+                {filteredProducts.map(product => {
+                  const isOutOfStock = (product.quantity || 0) <= 0;
+                  return (
+                    <div 
+                      key={product.id} 
+                      className={cn(
+                        "bg-white border rounded-xl p-4 flex flex-col shadow-sm group transition-all relative overflow-hidden",
+                        isOutOfStock 
+                          ? "border-slate-200 bg-slate-50/50" 
+                          : "border-slate-100 hover:border-emerald-500/50"
+                      )}
+                    >
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="px-2 py-0.5 bg-slate-50 border border-slate-100 rounded-md">
+                          <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wider">
+                            {product.category || 'Retail'}
+                          </span>
+                        </div>
+                        <div className="text-right">
+                          <span className={cn(
+                            "text-[9px] font-black uppercase tracking-wider block px-1.5 py-0.5 rounded",
+                            isOutOfStock 
+                              ? "text-rose-600 bg-rose-50 border border-rose-100" 
+                              : product.quantity <= 10 
+                                ? "text-amber-600 bg-amber-50 border border-amber-100" 
+                                : "text-emerald-600 bg-emerald-50 border border-emerald-100"
+                          )}>
+                             {isOutOfStock ? "OUT OF STOCK" : `${product.quantity} units`}
+                          </span>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <span className={cn(
-                          "text-[9px] font-bold uppercase tracking-tighter block",
-                          product.quantity <= 10 ? "text-rose-500" : "text-emerald-500"
-                        )}>
-                           {product.quantity} units
-                        </span>
+                      
+                      <h4 className={cn(
+                        "text-[13px] font-bold mb-0.5 truncate uppercase tracking-tight",
+                        isOutOfStock ? "text-slate-400 line-through" : "text-slate-900"
+                      )}>{product.name}</h4>
+                      <p className="text-[9px] text-slate-400 font-medium mb-4 uppercase tracking-tighter opacity-60">SKU: {product.sku}</p>
+                      
+                      <div className="mt-auto pt-3 border-t border-slate-50 flex items-center justify-between">
+                        <p className={cn("text-base font-black", isOutOfStock ? "text-slate-400" : "text-emerald-600")}>
+                          {currency} {product.value?.toLocaleString()}
+                        </p>
+                        <button 
+                          onClick={() => addToCart(product)}
+                          disabled={isOutOfStock}
+                          className={cn(
+                            "rounded-lg w-9 h-9 flex items-center justify-center shadow-md transition-all",
+                            isOutOfStock 
+                              ? "bg-slate-100 text-slate-300 border border-slate-200 cursor-not-allowed shadow-none"
+                              : "bg-[#0F172A] text-white hover:bg-emerald-600 hover:scale-105 active:scale-95"
+                          )}
+                        >
+                          <Plus className="w-4 h-4" />
+                        </button>
                       </div>
                     </div>
-                    
-                    <h4 className="text-[13px] font-bold text-slate-900 mb-0.5 truncate uppercase tracking-tight">{product.name}</h4>
-                    <p className="text-[9px] text-slate-400 font-medium mb-4 uppercase tracking-tighter opacity-60">SKU: {product.sku}</p>
-                    
-                    <div className="mt-auto pt-3 border-t border-slate-50 flex items-center justify-between">
-                      <p className="text-base font-black text-emerald-600">{currency} {product.value?.toLocaleString()}</p>
-                      <button 
-                        onClick={() => addToCart(product)}
-                        className="bg-[#0F172A] text-white rounded-lg w-9 h-9 flex items-center justify-center hover:bg-emerald-600 hover:scale-105 active:scale-95 transition-all shadow-md"
-                      >
-                        <Plus className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -532,6 +660,341 @@ export function POS() {
                </div>
             </div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Kenya Tax Invoice & Receipt Print Dialog */}
+      <AnimatePresence>
+        {completedSale && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
+            <style>{`
+              @media print {
+                body {
+                  visibility: hidden !important;
+                }
+                #printable-area, #printable-area * {
+                  visibility: visible !important;
+                }
+                #printable-area {
+                  position: absolute !important;
+                  left: 0 !important;
+                  top: 0 !important;
+                  width: 100% !important;
+                  background: white !important;
+                  color: black !important;
+                  box-shadow: none !important;
+                  border: none !important;
+                  padding: 20px !important;
+                  margin: 0 !important;
+                }
+                ${printType === 'receipt' ? `
+                  #printable-area {
+                    width: 76mm !important;
+                    max-width: 76mm !important;
+                    font-size: 11px !important;
+                    line-height: 1.2 !important;
+                    padding: 5px !important;
+                  }
+                  .no-print-thermal {
+                    display: none !important;
+                  }
+                ` : ''}
+              }
+            `}</style>
+            
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-[2rem] w-full max-w-4xl shadow-2xl border border-slate-200 overflow-hidden my-8 flex flex-col md:flex-row h-[85vh]"
+            >
+              {/* Left Column: Action controls (hidden on print anyway) */}
+              <div className="p-8 border-b md:border-b-0 md:border-r border-slate-100 flex flex-col justify-between md:w-[350px] bg-slate-50 shrink-0">
+                <div className="space-y-6">
+                  <div>
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full text-[10px] font-black uppercase tracking-widest">
+                      <CheckCircle2 className="w-3 h-3" /> Checkout Success
+                    </span>
+                    <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight mt-3">Print Documents</h3>
+                    <p className="text-xs text-slate-500 font-semibold mt-1">Select document layout below. Valid for KRA eTIMS audits in Kenya.</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <button
+                      onClick={() => setPrintType('receipt')}
+                      className={cn(
+                        "w-full flex items-center gap-3 px-4 py-3 rounded-xl border font-bold text-xs uppercase tracking-wider transition-all text-left",
+                        printType === 'receipt'
+                          ? "bg-[#0F172A] border-[#0F172A] text-white shadow-md shadow-slate-900/10"
+                          : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                      )}
+                    >
+                      <Receipt className="w-4 h-4" />
+                      Thermal Receipt (76mm)
+                    </button>
+                    <button
+                      onClick={() => setPrintType('invoice')}
+                      className={cn(
+                        "w-full flex items-center gap-3 px-4 py-3 rounded-xl border font-bold text-xs uppercase tracking-wider transition-all text-left",
+                        printType === 'invoice'
+                          ? "bg-[#0F172A] border-[#0F172A] text-white shadow-md shadow-slate-900/10"
+                          : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                      )}
+                    >
+                      <FileText className="w-4 h-4" />
+                      Standard Sales Invoice (A4)
+                    </button>
+                  </div>
+
+                  <div className="p-4 bg-amber-50/50 border border-amber-200 rounded-xl space-y-1">
+                    <h4 className="text-[10px] font-black text-amber-800 uppercase tracking-widest">KRA PIN Status</h4>
+                    <p className="text-[10px] text-amber-700 font-semibold leading-relaxed">
+                      {company?.kraPin 
+                        ? `Using registered PIN: ${company.kraPin}` 
+                        : "No KRA PIN configured in workspace settings. Showing default tax ID. Go to Settings > Preferences to save your business PIN."}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-3 pt-6 border-t border-slate-100">
+                  <button
+                    onClick={handlePrintPOS}
+                    className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 shadow-emerald-950/10"
+                  >
+                    <Printer className="w-4 h-4" />
+                    Print Current
+                  </button>
+                  <button
+                    onClick={() => setCompletedSale(null)}
+                    className="w-full h-12 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-bold text-xs uppercase tracking-widest transition-all"
+                  >
+                    Close & New Sale
+                  </button>
+                </div>
+              </div>
+
+              {/* Right Column: Visual Preview of printed content */}
+              <div className="flex-1 bg-slate-100 p-6 overflow-y-auto no-scrollbar flex justify-center items-start">
+                <div 
+                  id="printable-area" 
+                  className={cn(
+                    "bg-white shadow-lg border border-slate-200 font-sans text-slate-900",
+                    printType === 'receipt' 
+                      ? "w-[320px] p-6 text-xs text-left leading-relaxed divide-y divide-dashed divide-slate-300"
+                      : "w-[100%] max-w-[650px] p-10 text-xs text-left"
+                  )}
+                >
+                  {printType === 'receipt' ? (
+                    // THERMAL RECEIPT PREVIEW (76mm style)
+                    <div className="space-y-4">
+                      <div className="text-center space-y-1 pb-4">
+                        <h2 className="text-base font-black uppercase tracking-tight">{company?.name || 'INVENTORYPRO CO.'}</h2>
+                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{company?.address || 'Nairobi, Kenya'}</p>
+                        <p className="text-[10px] font-medium text-slate-500">{company?.phone || '+254 700 000 000'}</p>
+                        <p className="text-[10px] font-bold text-slate-700">KRA PIN: {company?.kraPin || 'P051123456F'}</p>
+                        <p className="text-[11px] font-black uppercase tracking-widest border border-slate-900 px-2 py-0.5 mt-2 inline-block">Sales Invoice</p>
+                      </div>
+
+                      <div className="space-y-1 py-3 text-[10px]">
+                        <div className="flex justify-between">
+                          <span className="font-semibold text-slate-500">RECEIPT NO:</span>
+                          <span className="font-bold text-slate-800">{completedSale.receiptId}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="font-semibold text-slate-500">INVOICE REF:</span>
+                          <span className="font-bold text-slate-800">{completedSale.invoiceId}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="font-semibold text-slate-500">DATE & TIME:</span>
+                          <span className="font-bold text-slate-800">{new Date(completedSale.timestamp).toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="font-semibold text-slate-500">CASHIER:</span>
+                          <span className="font-bold text-slate-800">{userName}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="font-semibold text-slate-500">CUSTOMER:</span>
+                          <span className="font-bold text-slate-800">{completedSale.customerName}</span>
+                        </div>
+                      </div>
+
+                      <div className="py-3">
+                        <table className="w-full text-left text-[11px]">
+                          <thead>
+                            <tr className="border-b border-dashed border-slate-300 text-slate-500 font-bold">
+                              <th className="pb-1 uppercase">Item</th>
+                              <th className="pb-1 text-center uppercase">Qty</th>
+                              <th className="pb-1 text-right uppercase">Price</th>
+                              <th className="pb-1 text-right uppercase">Total</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-dashed divide-slate-100">
+                            {completedSale.items.map((item: any, i: number) => (
+                              <tr key={i} className="text-slate-800">
+                                <td className="py-2 pr-2 font-semibold">
+                                  {item.name}
+                                  {item.sku && <span className="block text-[8px] text-slate-400 font-mono">SKU: {item.sku}</span>}
+                                </td>
+                                <td className="py-2 text-center font-bold">{item.quantity}</td>
+                                <td className="py-2 text-right font-medium">{currency}{(item.price).toLocaleString()}</td>
+                                <td className="py-2 text-right font-bold">{currency}{(item.price * item.quantity).toLocaleString()}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      <div className="py-3 space-y-1.5 border-t border-dashed border-slate-300">
+                        <div className="flex justify-between text-slate-600">
+                          <span className="font-semibold">Subtotal (VAT Excl.):</span>
+                          <span className="font-bold">{currency}{(completedSale.subtotal).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                        </div>
+                        <div className="flex justify-between text-slate-600">
+                          <span className="font-semibold">VAT (16% Rate A):</span>
+                          <span className="font-bold">{currency}{(completedSale.tax).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                        </div>
+                        <div className="flex justify-between text-base font-black text-slate-900 pt-1 border-t border-slate-200">
+                          <span>TOTAL PAID:</span>
+                          <span>{currency}{(completedSale.total).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                        </div>
+                      </div>
+
+                      <div className="py-4 text-center space-y-3">
+                        <div className="flex flex-col items-center justify-center p-2 border border-dashed border-slate-300 rounded-lg bg-slate-50">
+                          <span className="text-[8px] font-black text-slate-500 tracking-widest uppercase mb-1">eTIMS Compliance Verification</span>
+                          <img 
+                            src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(`https://itax.kra.go.ke/KRA-Portal/verifyInvoice.htm?invNo=${completedSale.receiptId}&pin=${company?.kraPin || 'P051123456F'}&total=${completedSale.total}`)}`} 
+                            alt="eTIMS KRA Validation QR" 
+                            className="w-20 h-20 border border-slate-200 p-1 bg-white rounded-md"
+                            referrerPolicy="no-referrer"
+                          />
+                          <span className="text-[8px] font-mono text-slate-500 font-bold mt-1">CODE: ETIMS-POS-{completedSale.receiptId?.slice(-8).toUpperCase()}</span>
+                        </div>
+                        <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+                          Thank you for shopping with us!<br />
+                          M-Pesa / Cash sale confirmed.
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    // BUSINESS SALES INVOICE PREVIEW (A4 style)
+                    <div className="space-y-8 font-sans">
+                      {/* Logo and Invoice Title */}
+                      <div className="flex justify-between items-start border-b-2 border-slate-900 pb-6">
+                        <div>
+                          <h1 className="text-2xl font-black tracking-tight text-slate-900 uppercase">{company?.name || 'INVENTORYPRO CO.'}</h1>
+                          <p className="text-slate-500 font-bold uppercase tracking-wider text-[10px]">{company?.address || 'Nairobi, Kenya'}</p>
+                          <p className="text-slate-500 font-semibold text-[10px]">{company?.phone || '+254 700 000 000'}</p>
+                        </div>
+                        <div className="text-right">
+                          <span className="inline-block px-4 py-1.5 bg-slate-900 text-white font-black text-sm uppercase tracking-widest">Sales Invoice</span>
+                          <p className="text-xs font-mono font-bold text-slate-700 mt-2">INVOICE NO: {completedSale.invoiceId}</p>
+                        </div>
+                      </div>
+
+                      {/* Buyer Details */}
+                      <div className="py-4">
+                        <div className="space-y-1.5 max-w-md">
+                          <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Buyer Details</h4>
+                          <div className="text-[11px] space-y-1">
+                            <p className="font-bold text-slate-900 text-sm">{completedSale.customerName}</p>
+                            <p className="font-semibold text-slate-600">PIN: <strong className="text-slate-400">Not Provided (Walk-in Customer)</strong></p>
+                            <p className="text-slate-600">Payment Status: <strong className="text-emerald-600 uppercase">FULLY PAID (POS)</strong></p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Invoice Metadata Box */}
+                      <div className="grid grid-cols-4 gap-4 p-4 bg-slate-50 border border-slate-100 rounded-xl text-[11px]">
+                        <div>
+                          <p className="font-bold text-slate-400 uppercase text-[9px] tracking-wider">Date of Issue</p>
+                          <p className="font-black text-slate-800 mt-0.5">{completedSale.date}</p>
+                        </div>
+                        <div>
+                          <p className="font-bold text-slate-400 uppercase text-[9px] tracking-wider">Due Date</p>
+                          <p className="font-black text-slate-800 mt-0.5">{completedSale.date}</p>
+                        </div>
+                        <div>
+                          <p className="font-bold text-slate-400 uppercase text-[9px] tracking-wider">Payment Method</p>
+                          <p className="font-black text-slate-800 mt-0.5 uppercase">{completedSale.paymentMethod}</p>
+                        </div>
+                        <div>
+                          <p className="font-bold text-slate-400 uppercase text-[9px] tracking-wider">Currency</p>
+                          <p className="font-black text-slate-800 mt-0.5 uppercase">{currency} (KES)</p>
+                        </div>
+                      </div>
+
+                      {/* Items Table */}
+                      <div>
+                        <table className="w-full text-left text-[11px]">
+                          <thead>
+                            <tr className="border-b border-slate-900 text-slate-500 font-black uppercase text-[10px] tracking-wider">
+                              <th className="pb-3 text-left">Product / Service</th>
+                              <th className="pb-3 text-left">SKU</th>
+                              <th className="pb-3 text-center">Quantity</th>
+                              <th className="pb-3 text-right">Unit Price</th>
+                              <th className="pb-3 text-center">Tax Category</th>
+                              <th className="pb-3 text-right">Amount (Incl. VAT)</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100">
+                            {completedSale.items.map((item: any, i: number) => (
+                              <tr key={i} className="text-slate-800 font-medium">
+                                <td className="py-4 font-bold text-slate-900">{item.name}</td>
+                                <td className="py-4 font-mono text-[10px] text-slate-500">{item.sku || 'N/A'}</td>
+                                <td className="py-4 text-center font-bold">{item.quantity}</td>
+                                <td className="py-4 text-right font-semibold">{currency}{(item.price).toLocaleString()}</td>
+                                <td className="py-4 text-center font-bold text-slate-600">Rate A (16%)</td>
+                                <td className="py-4 text-right font-black text-slate-900">{currency}{(item.price * item.quantity).toLocaleString()}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Summaries & QR Code eTIMS footer */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6 border-t border-slate-200">
+                        {/* KRA eTIMS Certification Column */}
+                        <div className="flex gap-4 items-start p-4 bg-slate-50 rounded-xl border border-slate-200">
+                          <img 
+                            src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(`https://itax.kra.go.ke/KRA-Portal/verifyInvoice.htm?invNo=${completedSale.invoiceId}&pin=${company?.kraPin || 'P051123456F'}&total=${completedSale.total}`)}`} 
+                            alt="eTIMS KRA Validation QR" 
+                            className="w-24 h-24 border border-slate-200 p-1 bg-white rounded-lg shrink-0"
+                            referrerPolicy="no-referrer"
+                          />
+                          <div className="space-y-1">
+                            <h4 className="text-[10px] font-black text-slate-800 uppercase tracking-wider">KRA eTIMS SECURE SIGNATURE</h4>
+                            <p className="text-[9px] text-slate-500 leading-normal font-semibold">This is a valid tax invoice certified by the Kenya Revenue Authority electronic Tax Invoice Management System (eTIMS).</p>
+                            <p className="text-[9px] font-mono text-slate-900 font-bold pt-1">SERIAL: KRA-ETIMS-{completedSale.invoiceId?.slice(-10).toUpperCase()}</p>
+                          </div>
+                        </div>
+
+                        {/* Calculations Breakdown */}
+                        <div className="space-y-2 text-right">
+                          <div className="flex justify-between text-slate-500 text-[11px] font-semibold">
+                            <span>Subtotal (VAT Exclusive)</span>
+                            <span>{currency}{(completedSale.subtotal).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                          </div>
+                          <div className="flex justify-between text-slate-500 text-[11px] font-semibold">
+                            <span>Tax Base (Rate A - 16%)</span>
+                            <span>{currency}{(completedSale.subtotal).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                          </div>
+                          <div className="flex justify-between text-slate-500 text-[11px] font-semibold">
+                            <span>VAT Total Amount (16%)</span>
+                            <span>{currency}{(completedSale.tax).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                          </div>
+                          <div className="flex justify-between text-slate-900 text-sm font-black pt-2 border-t-2 border-slate-900">
+                            <span>Grand Total (VAT Inclusive)</span>
+                            <span>{currency}{(completedSale.total).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>

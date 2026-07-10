@@ -262,7 +262,6 @@ function AppContent() {
       case 'analytics': return <Analytics />;
       case 'invoices':
       case 'quotations':
-      case 'proforma': 
         return <SalesHub defaultView={currentView} />;
       case 'receipts': return <Receipts />;
       case 'delivery_notes': return <DeliveryNotes />;

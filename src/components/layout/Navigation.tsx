@@ -73,7 +73,6 @@ const menuGroups = [
     icon: Receipt,
     children: [
       { id: "quotations" as ViewType, label: "Quotations", icon: FileText },
-      { id: "proforma" as ViewType, label: "Proforma Invoices", icon: Clock },
       { id: "invoices" as ViewType, label: "Invoices", icon: FileText },
       { id: "receipts" as ViewType, label: "Receipts", icon: ClipboardList },
       {

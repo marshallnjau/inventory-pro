@@ -35,6 +35,7 @@ import {
   setDoc,
 } from "firebase/firestore";
 import { db } from "../../lib/firebase";
+import { handleFirestoreError, OperationType } from "../../lib/firestoreUtils";
 import { useAuth } from "../../contexts/AuthContext";
 import { useSettings } from "../../contexts/SettingsContext";
 import { Product } from "../../types";
@@ -135,8 +136,8 @@ export function ExpiryTracking() {
     onConfirm: () => {}
   });
 
-  // Set loading to false initially because we operate in offline-friendly simulation dummy mode
-  const [loading, setLoading] = useState(false);
+  // Set loading to true initially as we load from Firestore
+  const [loading, setLoading] = useState(true);
 
   // Search and Filters State
   const [searchTerm, setSearchTerm] = useState("");
@@ -154,121 +155,33 @@ export function ExpiryTracking() {
   const [editExpDate, setEditExpDate] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
 
-  // High-fidelity local list of perishable products initialized from LocalStorage or default mock dataset
-  const [products, setProducts] = useState<Product[]>(() => {
-    const cached = localStorage.getItem("expiry_tracking_dummy_products_v2");
-    if (cached) {
-      try {
-        return JSON.parse(cached);
-      } catch (e) {
-        console.error("Failed to parse cached products:", e);
-      }
-    }
+  // Live Firestore database products list
+  const [products, setProducts] = useState<Product[]>([]);
 
-    return [
-      {
-        id: "demo-chemicals",
-        name: "Chemicals Batch A",
-        sku: "MOCK-CHM",
-        category: "Chemicals",
-        quantity: 200,
-        value: 200000,
-        movement: "slow",
-        batchNumber: "MOCK-BATCH-1",
-        manufactureDate: getRelativeDateString(-60),
-        expiryDate: getRelativeDateString(-3), // Expired (-3 Days Ago in Table)
-        expiryStatus: "Expired",
-        lastSold: "N/A",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-      {
-        id: "demo-cement",
-        name: "Cement Super-Strength",
-        sku: "MOCK-CEM",
-        category: "Construction",
-        quantity: 500,
-        value: 500000,
-        movement: "fast",
-        batchNumber: "MOCK-BATCH-2",
-        manufactureDate: getRelativeDateString(-30),
-        expiryDate: getRelativeDateString(2), // Near Expiry (2 Days Remaining in Table)
-        expiryStatus: "Near Expiry",
-        lastSold: "N/A",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-      {
-        id: "demo-paint",
-        name: "Paint Anti-Wear Blue",
-        sku: "MOCK-PNT",
-        category: "Consumables",
-        quantity: 300,
-        value: 300000,
-        movement: "moderate",
-        batchNumber: "MOCK-BATCH-3",
-        manufactureDate: getRelativeDateString(-15),
-        expiryDate: getRelativeDateString(10), // Near Expiry (10 Days Remaining in Table)
-        expiryStatus: "Near Expiry",
-        lastSold: "N/A",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-      {
-        id: "demo-steel",
-        name: "Steel Concrete Reinforcements",
-        sku: "MOCK-STL",
-        category: "Construction",
-        quantity: 1000,
-        value: 1000000,
-        movement: "fast",
-        batchNumber: "MOCK-BATCH-4",
-        manufactureDate: getRelativeDateString(-90),
-        expiryDate: getRelativeDateString(53), // Fresh (53 Days Remaining in Table)
-        expiryStatus: "Fresh",
-        lastSold: "N/A",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-      {
-        id: "demo-sealant",
-        name: "Joint Silicone Sealant",
-        sku: "MOCK-SLN",
-        category: "Consumables",
-        quantity: 120,
-        value: 144000,
-        movement: "moderate",
-        batchNumber: "MOCK-BATCH-5",
-        manufactureDate: getRelativeDateString(-12),
-        expiryDate: getRelativeDateString(6), // Near Expiry (6 Days Remaining)
-        expiryStatus: "Near Expiry",
-        lastSold: "N/A",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-      {
-        id: "demo-adhesive",
-        name: "Titanium Epoxy Resin",
-        sku: "MOCK-EPX",
-        category: "Chemicals",
-        quantity: 80,
-        value: 160000,
-        movement: "slow",
-        batchNumber: "MOCK-BATCH-6",
-        manufactureDate: getRelativeDateString(-95),
-        expiryDate: getRelativeDateString(-12), // Expired (-12 Days Ago)
-        expiryStatus: "Expired",
-        lastSold: "N/A",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }
-    ];
-  });
-
-  // Sync to LocalStorage on modifications
   useEffect(() => {
-    localStorage.setItem("expiry_tracking_dummy_products_v2", JSON.stringify(products));
-  }, [products]);
+    if (!profile?.companyId) return;
+
+    const path = `companies/${profile.companyId}/products`;
+    const q = collection(db, path);
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const docs = snapshot.docs.map((doc) => ({
+          ...doc.data(),
+          id: doc.id,
+        })) as Product[];
+        setProducts(docs);
+        setLoading(false);
+      },
+      (error) => {
+        handleFirestoreError(error, OperationType.GET, path);
+        setLoading(false);
+      },
+    );
+
+    return unsubscribe;
+  }, [profile?.companyId]);
 
   // Sorting controller
   const toggleSort = (newSort: "expiry" | "qty" | "valuation" | "name") => {
@@ -288,24 +201,15 @@ export function ExpiryTracking() {
       message: `Are you sure you want to permanently dispose and remove "${name}" from inventory records?`,
       confirmText: "Dispose Asset",
       type: "danger",
-      onConfirm: () => {
-        setProducts((prev) => prev.filter((p) => p.id !== id));
-        setConfirmConfig((prev) => ({ ...prev, isOpen: false }));
-      }
-    });
-  };
-
-  // Reset simulated entries helper to capture original pristine mockup state
-  const resetDemoBatches = () => {
-    setConfirmConfig({
-      isOpen: true,
-      title: "Reset Simulation Database",
-      message: "Are you sure you want to reset simulation database back to fresh default demo items?",
-      confirmText: "Reset Now",
-      type: "warning",
-      onConfirm: () => {
-        localStorage.removeItem("expiry_tracking_dummy_products_v2");
-        window.location.reload();
+      onConfirm: async () => {
+        if (!profile?.companyId) return;
+        try {
+          await deleteDoc(doc(db, `companies/${profile.companyId}/products`, id));
+        } catch (error) {
+          handleFirestoreError(error, OperationType.DELETE, `companies/${profile.companyId}/products`);
+        } finally {
+          setConfirmConfig((prev) => ({ ...prev, isOpen: false }));
+        }
       }
     });
   };
@@ -321,7 +225,7 @@ export function ExpiryTracking() {
   // Process manual edits
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingProduct) return;
+    if (!editingProduct || !profile?.companyId) return;
 
     setSavingEdit(true);
     const today = new Date();
@@ -341,23 +245,21 @@ export function ExpiryTracking() {
       }
     }
 
-    setProducts((prev) =>
-      prev.map((p) =>
-        p.id === editingProduct.id
-          ? {
-              ...p,
-              batchNumber: editBatch || "",
-              manufactureDate: editMfgDate || "",
-              expiryDate: editExpDate || "",
-              expiryStatus: computedStatus || p.expiryStatus,
-              updatedAt: new Date().toISOString(),
-            }
-          : p
-      )
-    );
-
-    setEditingProduct(null);
-    setSavingEdit(false);
+    try {
+      const productRef = doc(db, `companies/${profile.companyId}/products`, editingProduct.id);
+      await updateDoc(productRef, {
+        batchNumber: editBatch || "",
+        manufactureDate: editMfgDate || "",
+        expiryDate: editExpDate || "",
+        expiryStatus: computedStatus || editingProduct.expiryStatus || "Fresh",
+        updatedAt: new Date().toISOString(),
+      });
+      setEditingProduct(null);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `companies/${profile.companyId}/products`);
+    } finally {
+      setSavingEdit(false);
+    }
   };
 
   // Open the Add/Update Batch code controller
@@ -371,7 +273,7 @@ export function ExpiryTracking() {
 
   const handleUpdateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedProductId) return;
+    if (!selectedProductId || !profile?.companyId) return;
 
     setSavingEdit(true);
     const today = new Date();
@@ -391,23 +293,22 @@ export function ExpiryTracking() {
       }
     }
 
-    setProducts((prev) =>
-      prev.map((p) =>
-        p.id === selectedProductId
-          ? {
-              ...p,
-              batchNumber: editBatch || "",
-              manufactureDate: editMfgDate || "",
-              expiryDate: editExpDate || "",
-              expiryStatus: computedStatus || p.expiryStatus,
-              updatedAt: new Date().toISOString(),
-            }
-          : p
-      )
-    );
-
-    setIsUpdateModalOpen(false);
-    setSavingEdit(false);
+    try {
+      const productRef = doc(db, `companies/${profile.companyId}/products`, selectedProductId);
+      const targetProd = products.find(p => p.id === selectedProductId);
+      await updateDoc(productRef, {
+        batchNumber: editBatch || "",
+        manufactureDate: editMfgDate || "",
+        expiryDate: editExpDate || "",
+        expiryStatus: computedStatus || targetProd?.expiryStatus || "Fresh",
+        updatedAt: new Date().toISOString(),
+      });
+      setIsUpdateModalOpen(false);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `companies/${profile.companyId}/products`);
+    } finally {
+      setSavingEdit(false);
+    }
   };
 
   // Compile calculations exactly parallel inside the mockup
@@ -1027,19 +928,13 @@ export function ExpiryTracking() {
           <RefreshCw className="w-5 h-5 text-emerald-600 mt-0.5 shrink-0" />
           <div>
             <p className="font-extrabold text-emerald-950 text-sm">
-              Sandbox Live Expiry Simulation Mode Active
+              Live Database Mode Active
             </p>
             <p className="text-xs text-[#009240] font-medium mt-1">
-              You are viewing high-fidelity simulation records (Cement, Paint, Chemicals, Steel, Sealants, Adhesives). Edits, Disposals, and Batch Updates are processed instantly in memory.
+              You are viewing the real products from your database. Edits, Disposals, and Batch Updates are saved directly to Firestore.
             </p>
           </div>
         </div>
-        <button
-          onClick={resetDemoBatches}
-          className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-black uppercase tracking-wider rounded-xl transition-all shadow-md shrink-0 active:scale-95"
-        >
-          Reset Simulation Data
-        </button>
       </div>
 
       {/* Filtering Section with Numeric Badges */}

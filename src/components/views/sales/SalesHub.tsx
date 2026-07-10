@@ -11,25 +11,22 @@ import { Quotations } from './Quotations';
 import { Invoices } from './Invoices';
 import { SalesAnalytics } from './SalesAnalytics';
 
-type SalesTab = 'quotations' | 'proforma' | 'invoices' | 'analytics';
+type SalesTab = 'quotations' | 'invoices' | 'analytics';
 
 export function SalesHub({ defaultView }: { defaultView?: ViewType }) {
   const [activeTab, setActiveTab] = useState<SalesTab>(
-    defaultView === 'proforma' ? 'proforma' : 
     defaultView === 'invoices' ? 'invoices' : 
     'quotations'
   );
 
   useEffect(() => {
-    if (defaultView === 'proforma') setActiveTab('proforma');
-    else if (defaultView === 'invoices') setActiveTab('invoices');
+    if (defaultView === 'invoices') setActiveTab('invoices');
     else if (defaultView === 'quotations') setActiveTab('quotations');
   }, [defaultView]);
 
   const tabs: { id: SalesTab; label: string; icon: any }[] = [
     { id: 'quotations', label: 'Quotations', icon: FileText },
-    { id: 'proforma', label: 'Proforma Invoices', icon: Clock },
-    { id: 'invoices', label: 'Tax Invoices', icon: Receipt },
+    { id: 'invoices', label: 'Sales Invoices', icon: Receipt },
     { id: 'analytics', label: 'Sales Analytics', icon: BarChart3 },
   ];
 
@@ -55,7 +52,6 @@ export function SalesHub({ defaultView }: { defaultView?: ViewType }) {
 
       <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
         {activeTab === 'quotations' && <Quotations />}
-        {activeTab === 'proforma' && <Invoices filterType="proforma" />}
         {activeTab === 'invoices' && <Invoices filterType="standard" />}
         {activeTab === 'analytics' && <SalesAnalytics />}
       </div>

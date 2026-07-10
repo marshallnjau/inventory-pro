@@ -201,6 +201,36 @@ export function Settings() {
                           />
                         </div>
                         <div className="text-left">
+                          <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1 mb-1 block">KRA PIN (Kenya Revenue Authority)</label>
+                          <input 
+                            type="text"
+                            value={companyData.kraPin || ''}
+                            onChange={(e) => setCompanyData(prev => ({ ...prev, kraPin: e.target.value.toUpperCase() }))}
+                            placeholder="e.g. P051234567A"
+                            className="w-full h-11 px-4 bg-white border border-slate-100 rounded-lg text-sm font-bold focus:border-blue-500 outline-none"
+                          />
+                        </div>
+                        <div className="text-left">
+                          <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1 mb-1 block">Physical Address / Head Office</label>
+                          <input 
+                            type="text"
+                            value={companyData.address || ''}
+                            onChange={(e) => setCompanyData(prev => ({ ...prev, address: e.target.value }))}
+                            placeholder="e.g. 5th Floor, Plaza, Nairobi, Kenya"
+                            className="w-full h-11 px-4 bg-white border border-slate-100 rounded-lg text-sm font-bold focus:border-blue-500 outline-none"
+                          />
+                        </div>
+                        <div className="text-left">
+                          <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1 mb-1 block">Business Phone Number</label>
+                          <input 
+                            type="text"
+                            value={companyData.phone || ''}
+                            onChange={(e) => setCompanyData(prev => ({ ...prev, phone: e.target.value }))}
+                            placeholder="e.g. +254 700 000000"
+                            className="w-full h-11 px-4 bg-white border border-slate-100 rounded-lg text-sm font-bold focus:border-blue-500 outline-none"
+                          />
+                        </div>
+                        <div className="text-left">
                           <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1 mb-1 block">Operational Currency</label>
                           <select 
                             value={companyData.currency || '$'}

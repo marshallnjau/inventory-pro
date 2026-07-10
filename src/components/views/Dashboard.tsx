@@ -97,14 +97,8 @@ export function Dashboard({
 
   // Derived KPIs
   const allProducts = [...products];
-  if (products.length === 0) {
-    allProducts.push(...MOCK_PRODUCTS);
-  }
 
   const allAlerts = [...alerts];
-  if (alerts.length === 0) {
-    allAlerts.push(...MOCK_ALERTS);
-  }
 
   const totalCapital = allProducts.reduce(
     (sum, p) => sum + (p.value || 0) * (p.quantity || 0),

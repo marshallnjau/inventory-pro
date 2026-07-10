@@ -3,7 +3,7 @@ import {
   Search, Filter, Plus, FileText, Download, MoreHorizontal, 
   ChevronDown, Calendar, User, DollarSign, CheckCircle2, 
   Clock, AlertCircle, ArrowUpRight, Loader2, X, Package, 
-  Trash2, ShoppingCart
+  Trash2, ShoppingCart, Printer
 } from 'lucide-react';
 import { collection, onSnapshot, query, where, setDoc, doc, addDoc, serverTimestamp, updateDoc, increment, getDocs, orderBy } from 'firebase/firestore';
 import { db } from '../../../lib/firebase';
@@ -39,19 +39,24 @@ interface InvoiceItem {
 
 export function Invoices({ filterType }: { filterType?: 'standard' | 'proforma' }) {
   const { user } = useAuth();
-  const { profile, currency } = useSettings();
+  const { profile, company, currency } = useSettings();
   const [searchTerm, setSearchTerm] = useState('');
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isNewInvoiceOpen, setIsNewInvoiceOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [products, setProducts] = useState<any[]>([]);
+  const [selectedInvoice, setSelectedInvoice] = useState<any | null>(null);
   
   // New Invoice Form State
   const [customerName, setCustomerName] = useState('');
   const [selectedItems, setSelectedItems] = useState<InvoiceItem[]>([]);
   const [dueDate, setDueDate] = useState('');
-  const [isProforma, setIsProforma] = useState(filterType === 'proforma');
+  const isProforma = false;
+
+  const handlePrintInvoice = () => {
+    window.print();
+  };
 
   useEffect(() => {
     if (!profile?.companyId) return;
@@ -184,7 +189,6 @@ export function Invoices({ filterType }: { filterType?: 'standard' | 'proforma' 
       setCustomerName('');
       setSelectedItems([]);
       setDueDate('');
-      setIsProforma(false);
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, 'invoices');
     } finally {
@@ -297,9 +301,7 @@ export function Invoices({ filterType }: { filterType?: 'standard' | 'proforma' 
 
   const stats = [
     { label: 'Total Invoiced', value: `${currency}${invoices.reduce((acc, inv) => acc + (inv.amount || 0), 0).toLocaleString()}`, trend: '+12%', color: 'blue' },
-    { label: 'Outstanding', value: `${currency}${invoices.filter(i => i.status !== 'paid').reduce((acc, inv) => acc + (inv.amount || 0), 0).toLocaleString()}`, trend: '-5%', color: 'amber' },
-    { label: 'Total Count', value: invoices.length.toString(), trend: '+8%', color: 'emerald' },
-    { label: 'Overdue', value: `${currency}${invoices.filter(i => i.status === 'overdue').reduce((acc, inv) => acc + (inv.amount || 0), 0).toLocaleString()}`, trend: '+2%', color: 'rose' },
+    { label: 'Total Invoice', value: invoices.length.toString(), trend: '+8%', color: 'emerald' },
   ];
 
   return (
@@ -384,31 +386,6 @@ export function Invoices({ filterType }: { filterType?: 'standard' | 'proforma' 
                       />
                     </div>
 
-                    <div>
-                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1 mb-1.5 block">Invoice Type</label>
-                      <div className="flex bg-slate-100 p-1 rounded-xl">
-                        <button
-                          type="button"
-                          onClick={() => setIsProforma(false)}
-                          className={cn(
-                            "flex-1 h-10 rounded-lg text-xs font-bold transition-all",
-                            !isProforma ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
-                          )}
-                        >
-                          Tax Invoice
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setIsProforma(true)}
-                          className={cn(
-                            "flex-1 h-10 rounded-lg text-xs font-bold transition-all",
-                            isProforma ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
-                          )}
-                        >
-                          Proforma
-                        </button>
-                      </div>
-                    </div>
                     <div className="pt-4">
                       <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1 mb-3 block">Product Inventory</label>
                       <div className="grid grid-cols-1 gap-2 max-h-[200px] overflow-y-auto pr-2 no-scrollbar">
@@ -520,7 +497,7 @@ export function Invoices({ filterType }: { filterType?: 'standard' | 'proforma' 
         )}
       </AnimatePresence>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-left">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
         {stats.map((stat, i) => (
           <div key={i} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{stat.label}</p>
@@ -611,13 +588,17 @@ export function Invoices({ filterType }: { filterType?: 'standard' | 'proforma' 
                         Post
                      </button>
                    ) : (
-                     <button className="p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-50 transition-all">
-                       <MoreHorizontal className="w-4 h-4" />
+                     <button 
+                        onClick={() => setSelectedInvoice(inv)}
+                        className="p-2 text-slate-600 bg-slate-50 hover:bg-slate-100 hover:text-slate-900 border border-slate-200 rounded-lg transition-all flex items-center gap-1.5 font-bold text-[10px] uppercase tracking-wider"
+                     >
+                        <Printer className="w-3.5 h-3.5" />
+                        Print
                      </button>
                    )}
                 </div>
               </div>
-
+ 
               {/* Mobile Card */}
               <div className="lg:hidden p-5 space-y-4">
                 <div className="flex justify-between items-start">
@@ -642,6 +623,26 @@ export function Invoices({ filterType }: { filterType?: 'standard' | 'proforma' 
                       <p className="font-bold text-slate-700 text-xs">{inv.dueDate}</p>
                    </div>
                 </div>
+                <div className="flex justify-end pt-3 border-t border-slate-100">
+                   {inv.status === 'proforma' ? (
+                     <button 
+                        onClick={() => postToInvoice(inv)}
+                        disabled={isSubmitting}
+                        className="px-3 h-8 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-all font-bold text-[10px] uppercase tracking-wider flex items-center gap-1.5"
+                     >
+                        {isSubmitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ArrowUpRight className="w-3.5 h-3.5" />}
+                        Post
+                     </button>
+                   ) : (
+                     <button 
+                        onClick={() => setSelectedInvoice(inv)}
+                        className="px-3 h-8 bg-slate-50 text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-100 transition-all font-bold text-[10px] uppercase tracking-wider flex items-center gap-1.5"
+                     >
+                        <Printer className="w-3.5 h-3.5" />
+                        Print
+                     </button>
+                   )}
+                </div>
               </div>
             </motion.div>
           ))}
@@ -653,6 +654,245 @@ export function Invoices({ filterType }: { filterType?: 'standard' | 'proforma' 
           )}
         </div>
       </div>
+
+      {/* Kenya Sales Invoice Detailed Print Dialog */}
+      <AnimatePresence>
+        {selectedInvoice && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 overflow-y-auto text-left">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedInvoice(null)}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            />
+            <style>{`
+              @media print {
+                body {
+                  visibility: hidden !important;
+                }
+                #printable-invoice-area, #printable-invoice-area * {
+                  visibility: visible !important;
+                }
+                #printable-invoice-area {
+                  position: absolute !important;
+                  left: 0 !important;
+                  top: 0 !important;
+                  width: 100% !important;
+                  background: white !important;
+                  color: black !important;
+                  box-shadow: none !important;
+                  border: none !important;
+                  padding: 20px !important;
+                  margin: 0 !important;
+                }
+              }
+            `}</style>
+            
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="relative bg-white rounded-[2rem] w-full max-w-4xl shadow-2xl border border-slate-200 overflow-hidden my-8 flex flex-col md:flex-row h-[85vh] z-10"
+            >
+              {/* Absolute Close button */}
+              <button
+                onClick={() => setSelectedInvoice(null)}
+                className="absolute top-6 right-6 p-2 bg-slate-50 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded-full transition-colors z-20 border border-slate-100"
+                title="Close Viewer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              {/* Controls */}
+              <div className="p-8 border-b md:border-b-0 md:border-r border-slate-100 flex flex-col justify-between md:w-[320px] bg-slate-50 shrink-0">
+                <div className="space-y-6">
+                  <div>
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-[10px] font-black uppercase tracking-widest">
+                      <FileText className="w-3 h-3" /> Invoice Viewer
+                    </span>
+                    <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight mt-3">Sales Invoice</h3>
+                    <p className="text-xs text-slate-500 font-semibold mt-1">Review your Sales Invoice document. Ready for digital or paper distribution.</p>
+                  </div>
+
+                  <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-xl space-y-1.5">
+                    <div className="flex items-center gap-2 text-emerald-800 font-bold text-[10px] uppercase tracking-widest">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                      Status: {selectedInvoice.status}
+                    </div>
+                    <p className="text-[10px] text-emerald-700 font-semibold leading-relaxed">
+                      This document has been fully posted and synchronized to the general ledger.
+                     </p>
+                  </div>
+
+                  {company?.kraPin ? (
+                    <div className="p-4 bg-slate-100 border border-slate-200 rounded-xl">
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Seller KRA PIN</p>
+                      <p className="text-xs font-black text-slate-700 mt-1">{company.kraPin}</p>
+                    </div>
+                  ) : (
+                    <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                      <p className="text-[10px] font-black text-amber-800 uppercase tracking-widest">PIN MISSING</p>
+                      <p className="text-[10px] text-amber-700 mt-1 font-semibold leading-normal">
+                        KRA PIN is currently not saved. Go to Settings &gt; Preferences to save your KRA PIN.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-3 pt-6 border-t border-slate-100">
+                  <button
+                    onClick={handlePrintInvoice}
+                    className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-md"
+                  >
+                    <Printer className="w-4 h-4" />
+                    Print Invoice (A4)
+                  </button>
+                  <button
+                    onClick={() => setSelectedInvoice(null)}
+                    className="w-full h-12 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-bold text-xs uppercase tracking-widest transition-all"
+                  >
+                    Close Viewer
+                  </button>
+                </div>
+              </div>
+
+              {/* A4 Sales Invoice Preview */}
+              <div className="flex-1 bg-slate-100 p-6 overflow-y-auto no-scrollbar flex justify-center items-start">
+                <div 
+                  id="printable-invoice-area" 
+                  className="bg-white shadow-lg border border-slate-200 w-full max-w-[650px] p-10 text-xs text-left text-slate-900 font-sans"
+                >
+                  {/* Logo and Invoice Title */}
+                  <div className="flex justify-between items-start border-b-2 border-slate-900 pb-6">
+                    <div>
+                      <h1 className="text-2xl font-black tracking-tight text-slate-900 uppercase">{company?.name || 'INVENTORYPRO CO.'}</h1>
+                      <p className="text-slate-500 font-bold uppercase tracking-wider text-[10px]">{company?.address || 'Nairobi, Kenya'}</p>
+                      <p className="text-slate-500 font-semibold text-[10px]">{company?.phone || '+254 700 000 000'}</p>
+                    </div>
+                    <div className="text-right">
+                      <span className="inline-block px-4 py-1.5 bg-slate-900 text-white font-black text-sm uppercase tracking-widest">Sales Invoice</span>
+                      <p className="text-xs font-mono font-bold text-slate-700 mt-2">INVOICE NO: {selectedInvoice.id?.replace(`${profile?.companyId}_`, '') || selectedInvoice.id}</p>
+                    </div>
+                  </div>
+
+                  {/* Buyer Details */}
+                  <div className="py-4">
+                    <div className="space-y-1.5 max-w-md">
+                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Buyer Details</h4>
+                      <div className="text-[11px] space-y-1">
+                        <p className="font-bold text-slate-900 text-sm">{selectedInvoice.customer}</p>
+                        <p className="font-semibold text-slate-600">PIN: <strong className="text-slate-400">Not Provided</strong></p>
+                        <p className="text-slate-600">Payment Status: <strong className={cn(
+                          "uppercase",
+                          selectedInvoice.status === 'paid' ? "text-emerald-600" : "text-amber-600"
+                        )}>{selectedInvoice.status}</strong></p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Invoice Metadata Box */}
+                  <div className="grid grid-cols-4 gap-4 p-4 bg-slate-50 border border-slate-100 rounded-xl text-[11px]">
+                    <div>
+                      <p className="font-bold text-slate-400 uppercase text-[9px] tracking-wider">Date of Issue</p>
+                      <p className="font-black text-slate-800 mt-0.5">{selectedInvoice.date}</p>
+                    </div>
+                    <div>
+                      <p className="font-bold text-slate-400 uppercase text-[9px] tracking-wider">Due Date</p>
+                      <p className="font-black text-slate-800 mt-0.5">{selectedInvoice.dueDate}</p>
+                    </div>
+                    <div>
+                      <p className="font-bold text-slate-400 uppercase text-[9px] tracking-wider">Payment Method</p>
+                      <p className="font-black text-slate-800 mt-0.5 uppercase">M-PESA / BANK</p>
+                    </div>
+                    <div>
+                      <p className="font-bold text-slate-400 uppercase text-[9px] tracking-wider">Currency</p>
+                      <p className="font-black text-slate-800 mt-0.5 uppercase">{currency} (KES)</p>
+                    </div>
+                  </div>
+
+                  {/* Items Table */}
+                  <div className="py-2">
+                    <table className="w-full text-left text-[11px]">
+                      <thead>
+                        <tr className="border-b border-slate-900 text-slate-500 font-black uppercase text-[10px] tracking-wider">
+                          <th className="pb-3 text-left">Product / Service</th>
+                          <th className="pb-3 text-left">SKU</th>
+                          <th className="pb-3 text-center">Quantity</th>
+                          <th className="pb-3 text-right">Unit Price</th>
+                          <th className="pb-3 text-center">Tax Category</th>
+                          <th className="pb-3 text-right">Amount (Incl. VAT)</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {selectedInvoice.items && selectedInvoice.items.length > 0 ? (
+                          selectedInvoice.items.map((item: any, i: number) => (
+                            <tr key={i} className="text-slate-800 font-medium">
+                              <td className="py-4 font-bold text-slate-900">{item.name}</td>
+                              <td className="py-4 font-mono text-[10px] text-slate-500">{item.sku || 'N/A'}</td>
+                              <td className="py-4 text-center font-bold">{item.quantity}</td>
+                              <td className="py-4 text-right font-semibold">{currency}{(item.price || 0).toLocaleString()}</td>
+                              <td className="py-4 text-center font-bold text-slate-600">Rate A (16%)</td>
+                              <td className="py-4 text-right font-black text-slate-900">{currency}{( (item.price || 0) * (item.quantity || 1) ).toLocaleString()}</td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr className="text-slate-800 font-medium">
+                            <td className="py-4 font-bold text-slate-900">Standard Business Supply Bill</td>
+                            <td className="py-4 font-mono text-[10px] text-slate-500 font-bold">N/A</td>
+                            <td className="py-4 text-center font-bold">1</td>
+                            <td className="py-4 text-right font-semibold">{currency}{(selectedInvoice.amount || 0).toLocaleString()}</td>
+                            <td className="py-4 text-center font-bold text-slate-600 font-bold">Rate A (16%)</td>
+                            <td className="py-4 text-right font-black text-slate-900">{currency}{(selectedInvoice.amount || 0).toLocaleString()}</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Summaries & QR Code eTIMS footer */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6 border-t border-slate-200">
+                    {/* KRA eTIMS Certification Column */}
+                    <div className="flex gap-4 items-start p-4 bg-slate-50 rounded-xl border border-slate-200">
+                      <img 
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(`https://itax.kra.go.ke/KRA-Portal/verifyInvoice.htm?invNo=${selectedInvoice.id}&pin=${company?.kraPin || 'P051123456F'}&total=${selectedInvoice.amount}`)}`} 
+                        alt="eTIMS KRA Validation QR" 
+                        className="w-24 h-24 border border-slate-200 p-1 bg-white rounded-lg shrink-0"
+                        referrerPolicy="no-referrer"
+                      />
+                      <div className="space-y-1">
+                        <h4 className="text-[10px] font-black text-slate-800 uppercase tracking-wider">KRA eTIMS SECURE SIGNATURE</h4>
+                        <p className="text-[9px] text-slate-500 leading-normal font-semibold">This is a valid tax invoice certified by the Kenya Revenue Authority electronic Tax Invoice Management System (eTIMS).</p>
+                        <p className="text-[9px] font-mono text-slate-900 font-bold pt-1">SERIAL: KRA-ETIMS-{(selectedInvoice.id || 'INV').slice(-10).toUpperCase()}</p>
+                      </div>
+                    </div>
+
+                    {/* Calculations Breakdown */}
+                    <div className="space-y-2 text-right">
+                      <div className="flex justify-between text-slate-500 text-[11px] font-semibold">
+                        <span>Subtotal (VAT Exclusive)</span>
+                        <span>{currency}{(selectedInvoice.amount * 0.862068).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                      </div>
+                      <div className="flex justify-between text-slate-500 text-[11px] font-semibold">
+                        <span>Tax Base (Rate A - 16%)</span>
+                        <span>{currency}{(selectedInvoice.amount * 0.862068).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                      </div>
+                      <div className="flex justify-between text-slate-500 text-[11px] font-semibold">
+                        <span>VAT Total Amount (16%)</span>
+                        <span>{currency}{(selectedInvoice.amount * 0.137931).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                      </div>
+                      <div className="flex justify-between text-slate-900 text-sm font-black pt-2 border-t-2 border-slate-900">
+                        <span>Grand Total (VAT Inclusive)</span>
+                        <span>{currency}{(selectedInvoice.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

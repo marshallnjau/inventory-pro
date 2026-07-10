@@ -68,15 +68,9 @@ export function ProfitTracking() {
     return () => unsubscribe();
   }, [profile?.companyId]);
 
-  // Combine products with MOCK_PRODUCTS for realistic list
+  // Use live database products
   const products = useMemo(() => {
-    const list = [...dbProducts];
-    MOCK_PRODUCTS.forEach((mock) => {
-      if (!list.some((p) => p.sku === mock.sku)) {
-        list.push({ ...mock, id: `mock-${mock.id}` });
-      }
-    });
-    return list;
+    return [...dbProducts];
   }, [dbProducts]);
 
   // Map products to structured margins

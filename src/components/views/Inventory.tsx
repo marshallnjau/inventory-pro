@@ -636,11 +636,6 @@ export function Inventory() {
   }
 
   const allProducts = [...products];
-  MOCK_PRODUCTS.forEach((mock) => {
-    if (!products.some((p) => p.sku === mock.sku)) {
-      allProducts.push(mock);
-    }
-  });
 
   const todayTime = new Date().setHours(0, 0, 0, 0);
   const expiredCount = allProducts.filter((p) => {

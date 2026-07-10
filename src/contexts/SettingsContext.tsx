@@ -20,6 +20,9 @@ export interface Company {
   currency: string;
   timezone: string;
   createdAt: string;
+  kraPin?: string;
+  address?: string;
+  phone?: string;
 }
 
 interface SettingsContextType {
